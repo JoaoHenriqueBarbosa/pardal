@@ -1,4 +1,4 @@
-import { LayoutConfig, ElementType, Direction, LayoutAlignmentX, LayoutAlignmentY, TextElementConfig, TextAlignment, TextWrapMode } from '../domain/model/types';
+import { LayoutConfig, ElementType, Direction, LayoutAlignmentX, LayoutAlignmentY, TextElementConfig, TextAlignment, TextWrapMode, ImageElementConfig, ImageFitMode } from '../domain/model/types';
 import { ElementDeclaration, LayoutElement, ensureId } from '../domain/model/element';
 import { parseColor } from '../domain/utils/color';
 import { parsePadding } from '../domain/utils/padding';
@@ -49,6 +49,18 @@ export function createElement(elementType: ElementType, config: ElementDeclarati
     }
   }
   
+  // Processamento especial para imagem
+  let imageConfig: ImageElementConfig | undefined = undefined;
+  if (elementType === 'image' && config.source) {
+    imageConfig = {
+      source: config.source,
+      fit: (config.fit as ImageFitMode) || ImageFitMode.CONTAIN,
+      opacity: config.opacity !== undefined ? config.opacity : 1.0,
+      cornerRadius: config.cornerRadius,
+      rounded: config.rounded
+    };
+  }
+  
   // Configuração padrão para o layout
   const defaultLayoutConfig: LayoutConfig = {
     sizing: {
@@ -91,7 +103,8 @@ export function createElement(elementType: ElementType, config: ElementDeclarati
     backgroundColor,
     cornerRadius: config.cornerRadius,
     elementType,
-    textConfig
+    textConfig,
+    imageConfig
   };
   
   if (currentContext.debugMode) {

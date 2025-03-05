@@ -1,8 +1,8 @@
 // Importações
-import { Direction, SizingType, Vector2, DEFAULT_MAX_SIZE, DEFAULT_MIN_SIZE, LayoutAlignmentX, LayoutAlignmentY, TextAlignment, FontOptions } from '../model/types';
+import { Direction, SizingType, Vector2, DEFAULT_MAX_SIZE, DEFAULT_MIN_SIZE, LayoutAlignmentX, LayoutAlignmentY, TextAlignment, FontOptions, BoundingBox } from '../model/types';
 import { LayoutElement, MeasuredWord, WrappedTextLine } from '../model/element';
 import { getCurrentContext } from './context';
-import { createCircleCommand, createRectangleCommand, createTextCommandFromConfig } from '../rendering/commands';
+import { createCircleCommand, createRectangleCommand, createTextCommandFromConfig, createImageCommandFromConfig } from '../rendering/commands';
 import { parseColor } from '../utils/color';
 import { parseMarkdownText } from '../utils/markdown';
 
@@ -900,6 +900,96 @@ function generateRenderCommands(): void {
     positionElement(rootElement, { x: 0, y: 0 });
   }
   
+  // Gerar comandos para cada elemento
+  for (const element of currentContext.layoutElements) {
+    // Verificar se o elemento tem posição e dimensões válidas
+    if (!element.dimensions || 
+        element.dimensions.width <= 0 || 
+        element.dimensions.height <= 0 ||
+        !element.position) {
+      continue;
+    }
+    
+    // Extrair as posições e dimensões do elemento
+    const boundingBox: BoundingBox = {
+      x: element.position.x,
+      y: element.position.y,
+      width: element.dimensions.width,
+      height: element.dimensions.height
+    };
+    
+    // Verificar tipo de elemento e gerar comando específico
+    switch (element.elementType) {
+      case 'rectangle':
+        const rectCmd = createRectangleCommand(
+          boundingBox, 
+          element.backgroundColor, 
+          element.cornerRadius
+        );
+        currentContext.renderCommands.push(rectCmd);
+        break;
+        
+      case 'circle':
+        const circleCmd = createCircleCommand(
+          boundingBox, 
+          element.backgroundColor
+        );
+        currentContext.renderCommands.push(circleCmd);
+        break;
+        
+      case 'text':
+        if (element.textConfig && element.wrappedTextLines) {
+          const textConfig = element.textConfig;
+          const color = textConfig.color || { r: 0, g: 0, b: 0, a: 1 };
+          
+          // Extrair todas as palavras de todas as linhas em um array plano
+          let allWords: MeasuredWord[] = [];
+          for (const line of element.wrappedTextLines) {
+            allWords = allWords.concat(line.content);
+          }
+          
+          if (allWords.length > 0) {
+            const textCmd = createTextCommandFromConfig(
+              boundingBox,
+              {
+                content: allWords,
+                color: typeof color === 'string' ? parseColor(color) : color,
+                fontId: textConfig.fontId,
+                fontSize: textConfig.fontSize,
+                letterSpacing: textConfig.letterSpacing,
+                lineHeight: textConfig.lineHeight
+              }
+            );
+            currentContext.renderCommands.push(textCmd);
+          }
+        }
+        break;
+        
+      // Caso para imagem
+      default:
+        if (element.elementType === 'image' && element.imageConfig) {
+          console.log("Processando elemento de imagem:", element.id);
+          console.log("Configuração da imagem:", element.imageConfig);
+          const imageCmd = createImageCommandFromConfig(
+            boundingBox,
+            {
+              source: element.imageConfig.source,
+              fit: element.imageConfig.fit,
+              opacity: element.imageConfig.opacity !== undefined ? element.imageConfig.opacity : 1.0,
+              cornerRadius: element.imageConfig.cornerRadius,
+              rounded: element.imageConfig.rounded
+            },
+            0
+          );
+          console.log("Comando de renderização de imagem criado:", imageCmd);
+          currentContext.renderCommands.push(imageCmd);
+        } else if (element.elementType === 'image') {
+          console.log("ERRO: Elemento de imagem sem imageConfig:", element);
+        }
+        break;
+    }
+  }
+  
   console.log(`Total de ${currentContext.renderCommands.length} comandos de renderização gerados`);
 }
 
@@ -960,6 +1050,22 @@ function positionElement(element: LayoutElement, position: Vector2): void {
       createCircleCommand(boundingBox, element.backgroundColor, 0)
     );
     console.log(`  Adicionando comando CIRCLE para elemento ${element.id}`);
+  } else if (element.elementType === 'image' && element.imageConfig) {
+    // Processar elemento de imagem
+    currentContext.renderCommands.push(
+      createImageCommandFromConfig(
+        boundingBox,
+        {
+          source: element.imageConfig.source,
+          fit: element.imageConfig.fit,
+          opacity: element.imageConfig.opacity !== undefined ? element.imageConfig.opacity : 1.0,
+          cornerRadius: element.imageConfig.cornerRadius,
+          rounded: element.imageConfig.rounded
+        },
+        0
+      )
+    );
+    console.log(`  Adicionando comando IMAGE para elemento ${element.id}`);
   } else if (element.elementType === 'text' && element.textConfig) {
     // Processar elemento de texto
     const color = typeof element.textConfig.color === 'string' 

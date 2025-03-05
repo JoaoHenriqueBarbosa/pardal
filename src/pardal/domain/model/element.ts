@@ -1,4 +1,4 @@
-import { ChildAlignment, Color, CornerRadius, Direction, ElementType, LayoutConfig, Padding, SizingAxis, TextElementConfig, TextAlignment, TextWrapMode } from './types';
+import { ChildAlignment, Color, CornerRadius, Direction, ElementType, LayoutConfig, Padding, SizingAxis, TextElementConfig, TextAlignment, TextWrapMode, ImageElementConfig, ImageFitMode, Vector2 } from './types';
 
 // Interfaces para processamento de texto
 export interface MeasuredWord {
@@ -49,6 +49,12 @@ export interface ElementDeclaration {
   fontFamily?: string;
   fontWeight?: string;
   fontStyle?: string;
+  
+  // Propriedades de imagem
+  source?: string; // Caminho da imagem ou dados em base64
+  fit?: ImageFitMode; // Modo de ajuste da imagem
+  opacity?: number; // Opacidade da imagem (0.0 - 1.0)
+  rounded?: boolean; // Se verdadeiro, a imagem será recortada em formato circular
 }
 
 // Elemento de layout (entidade de domínio)
@@ -59,11 +65,13 @@ export interface LayoutElement {
   children: LayoutElement[];
   dimensions: Dimensions;
   minDimensions: Dimensions;
+  position?: Vector2;  // Posição do elemento no layout (x, y)
   layoutConfig: LayoutConfig;
   backgroundColor: Color;
   cornerRadius?: CornerRadius;
   elementType: ElementType;
   textConfig?: TextElementConfig; // Configuração de texto para elementos do tipo text
+  imageConfig?: ImageElementConfig; // Configuração de imagem para elementos do tipo image
   // Campos para processamento de texto avançado
   measuredWords?: MeasuredWord[]; // Palavras medidas para elementos de texto
   wrappedTextLines?: WrappedTextLine[]; // Linhas de texto após quebra
@@ -77,7 +85,8 @@ export const idCounters: Record<string, number> = {
   row: 0,
   column: 0,
   element: 0,
-  rectangle: 0
+  rectangle: 0,
+  image: 0
 };
 
 // Função para gerar um ID automático

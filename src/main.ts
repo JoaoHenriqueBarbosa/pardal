@@ -11,8 +11,11 @@ import {
   text,
   Alignment,
   TextAlignment,
+  ImageFitMode,
+  rect,
 } from "./pardal";
 import { Buffer } from "buffer";
+import { image } from "./pardal/interface/element-helpers";
 
 // Definir algumas cores para usar no documento
 const colors = {
@@ -30,22 +33,28 @@ console.log("Iniciando aplicação");
 
 // Criar um novo documento PDF
 const doc = createPDFDocument({
-  debug: true,
+  // debug: true,
 });
 
 console.log("Documento PDF criado");
+
+const imageBuffer = await fetch("https://via.assets.so/game.png").then((res) =>
+  res.arrayBuffer()
+);
 
 // Iniciar o layout
 beginLayout();
 
 // Elemento principal
-column(
+image(
+  `data:image/png;base64,${Buffer.from(imageBuffer).toString("base64")}`,
   {
     width: Sizing.grow(),
     height: Sizing.grow(),
     fillColor: colors.background,
     padding: 20,
     childAlignment: Alignment.center(),
+    fit: ImageFitMode.COVER,
   },
   () => {
     // Container do Tweet - centralizado e com largura fixa
@@ -69,11 +78,17 @@ column(
           },
           () => {
             // Avatar do usuário (círculo)
-            circle({
-              width: Sizing.fixed(48),
-              height: Sizing.fixed(48),
-              fillColor: colors.skeleton,
-            });
+            image(
+              `data:image/png;base64,${Buffer.from(imageBuffer).toString(
+                "base64"
+              )}`,
+              {
+                width: Sizing.fixed(48),
+                height: Sizing.fixed(48),
+                fit: ImageFitMode.COVER,
+                rounded: true,
+              }
+            );
 
             // Informações do usuário
             column(
@@ -135,6 +150,43 @@ column(
               fillColor: colors.purple,
               textAlignment: TextAlignment.LEFT,
             });
+
+            image(
+              `data:image/png;base64,${Buffer.from(imageBuffer).toString(
+                "base64"
+              )}`,
+              {
+                width: Sizing.fixed(100),
+                height: Sizing.fixed(100),
+                fit: ImageFitMode.COVER,
+              }
+            );
+
+            // Exemplo com cantos arredondados
+            image(
+              `data:image/png;base64,${Buffer.from(imageBuffer).toString(
+                "base64"
+              )}`,
+              {
+                width: Sizing.fixed(100),
+                height: Sizing.fixed(100),
+                fit: ImageFitMode.COVER,
+                cornerRadius: 15,
+              }
+            );
+
+            // Exemplo com formato circular
+            image(
+              `data:image/png;base64,${Buffer.from(imageBuffer).toString(
+                "base64"
+              )}`,
+              {
+                width: Sizing.fixed(100),
+                height: Sizing.fixed(100),
+                fit: ImageFitMode.COVER,
+                rounded: true,
+              }
+            );
           }
         );
       }

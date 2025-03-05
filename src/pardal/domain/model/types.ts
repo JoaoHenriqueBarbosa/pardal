@@ -105,7 +105,7 @@ export interface LayoutConfig {
 }
 
 // Tipos de elementos suportados
-export type ElementType = 'rectangle' | 'circle' | 'text';
+export type ElementType = 'rectangle' | 'circle' | 'text' | 'image';
 
 // Modo de quebra de texto
 export enum TextWrapMode {
@@ -165,4 +165,24 @@ export const DEFAULT_FONTS: FontOptions = {
   thinItalic: 'Helvetica-LightOblique',
   regularItalic: 'Helvetica-Oblique',
   boldItalic: 'Helvetica-BoldOblique'
-}; 
+};
+
+/**
+ * Configuração de elemento de imagem
+ */
+export interface ImageElementConfig {
+  source: string;        // Caminho da imagem ou Buffer
+  fit?: ImageFitMode;    // Modo de ajuste da imagem
+  opacity?: number;      // Opacidade da imagem (0.0 - 1.0)
+  cornerRadius?: CornerRadius; // Raio dos cantos (para imagens com cantos arredondados)
+  rounded?: boolean;     // Se verdadeiro, a imagem será recortada em formato circular
+}
+
+/**
+ * Modos de ajuste da imagem dentro do seu container
+ */
+export enum ImageFitMode {
+  FILL = 'FILL',           // Preenche todo o espaço, podendo distorcer
+  CONTAIN = 'CONTAIN',     // Mantém proporções, cabe inteira no espaço
+  COVER = 'COVER'          // Mantém proporções, cobre todo o espaço (pode cortar)
+} 

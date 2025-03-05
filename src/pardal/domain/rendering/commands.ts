@@ -8,6 +8,7 @@ export enum RenderCommandType {
   SCISSOR_START = 'SCISSOR_START',
   SCISSOR_END = 'SCISSOR_END',
   TEXT = 'TEXT',
+  IMAGE = 'IMAGE',
 }
 
 // Comando de renderização
@@ -28,6 +29,13 @@ export interface RenderCommand {
       fontSize?: number;
       letterSpacing?: number;
       lineHeight?: number;
+    };
+    image?: {
+      source: string;
+      fit: string;
+      opacity: number;
+      cornerRadius?: CornerRadius;
+      rounded?: boolean;
     };
   };
   commandType: RenderCommandType;
@@ -128,4 +136,61 @@ export function createTextCommandFromConfig(
     commandType: RenderCommandType.TEXT,
     zIndex
   };
+}
+
+/**
+ * Cria um comando de renderização de imagem
+ */
+export function createImageCommand(
+  boundingBox: BoundingBox,
+  source: string,
+  options: {
+    fit?: string,
+    opacity?: number,
+    cornerRadius?: CornerRadius,
+    rounded?: boolean
+  } = {},
+  zIndex: number = 0
+): RenderCommand {
+  return {
+    boundingBox,
+    renderData: {
+      image: {
+        source,
+        fit: options.fit || 'CONTAIN',
+        opacity: options.opacity !== undefined ? options.opacity : 1.0,
+        cornerRadius: options.cornerRadius,
+        rounded: options.rounded
+      }
+    },
+    commandType: RenderCommandType.IMAGE,
+    zIndex
+  };
+}
+
+/**
+ * Cria um comando de renderização de imagem a partir de uma configuração
+ */
+export function createImageCommandFromConfig(
+  boundingBox: BoundingBox,
+  imageConfig: {
+    source: string,
+    fit?: string,
+    opacity?: number,
+    cornerRadius?: CornerRadius,
+    rounded?: boolean
+  },
+  zIndex: number = 0
+): RenderCommand {
+  return createImageCommand(
+    boundingBox,
+    imageConfig.source,
+    {
+      fit: imageConfig.fit,
+      opacity: imageConfig.opacity,
+      cornerRadius: imageConfig.cornerRadius,
+      rounded: imageConfig.rounded
+    },
+    zIndex
+  );
 } 

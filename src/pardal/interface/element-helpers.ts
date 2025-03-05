@@ -92,4 +92,34 @@ export function column(
     ...config,
     direction: Direction.COLUMN
   }, 'column'), children);
+}
+
+// Helper para criar um elemento de imagem com filho(s)
+export function withImage(
+  source: string,
+  config: ElementDeclaration,
+  children: () => void
+): void {
+  const processedConfig: ElementDeclaration = { 
+    ...config,
+    source: source
+  };
+  
+  withChildren('image', ensureId(processedConfig, 'image'), children);
+}
+
+// Helper para criar um elemento de imagem e fechá-lo imediatamente ou com filhos
+export function image(source: string, config: ElementDeclaration = {}, children?: () => void): void {
+  console.log(`Criando elemento de imagem ${config.id || 'sem id'}`);
+  
+  const processedConfig: ElementDeclaration = { 
+    ...config,
+    source: source
+  };
+  
+  if (children) {
+    withChildren('image', ensureId(processedConfig, 'image'), children);
+  } else {
+    element('image', ensureId(processedConfig, 'image'));
+  }
 } 
