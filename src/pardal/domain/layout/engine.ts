@@ -149,37 +149,112 @@ function wrapTextIntoLines(
     let currentLine: WrappedTextLine | null = null;
     let currentLineWidth = 0;
     
-    for (const word of words) {
-      // Initialize currentLine if it's null
-      if (currentLine === null) {
-        currentLine = {
-          content: [],
-          dimensions: { width: 0, height: 0 },
-          startOffset: word.startOffset,
-          length: 0
-        };
-      }
-
-      // Se a palavra cabe na linha atual, adiciona a palavra à linha
-      if (currentLineWidth + word.width <= containerWidth) {
-        currentLine.content.push(word);
-        currentLineWidth += word.width;
-        // Update the length of the line
-        currentLine.length += word.length;
-        currentLine.dimensions.width += word.width;
-        currentLine.dimensions.height = Math.max(currentLine.dimensions.height, word.height);
-      } else {
-        // Adiciona a linha atual ao array de linhas
-        lines.push(currentLine);
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i];
+      
+      // Verificar se a palavra contém um caractere de quebra de linha
+      if (word.text.includes('\n')) {
+        console.log("Palavra com quebra de linha:", word.text);
+        // Dividir a palavra em duas partes: antes e depois do '\n'
+        const parts = word.text.split('\n');
         
-        // Inicia uma nova linha com a palavra atual
-        currentLine = {
-          content: [word],
-          dimensions: { width: word.width, height: word.height },
-          startOffset: word.startOffset,
-          length: word.length
-        };
-        currentLineWidth = word.width;
+        // Primeiro, lidar com a parte antes do '\n'
+        if (parts[0] && parts[0].trim() !== '') {
+          // Aplicar trim na primeira parte
+          const trimmedFirstPart = parts[0].trim();
+          
+          // Initialize currentLine if it's null
+          if (currentLine === null) {
+            currentLine = {
+              content: [],
+              dimensions: { width: 0, height: 0 },
+              startOffset: word.startOffset,
+              length: 0
+            };
+          }
+          
+          // Criar uma nova palavra para a primeira parte
+          const firstPart: MeasuredWord = {
+            ...word,
+            text: trimmedFirstPart,
+            length: trimmedFirstPart.length,
+            width: pdfDoc.widthOfString(trimmedFirstPart)
+          };
+          
+          // Adicionar a primeira parte à linha atual
+          currentLine.content.push(firstPart);
+          currentLineWidth += firstPart.width;
+          currentLine.length += firstPart.length;
+          currentLine.dimensions.width += firstPart.width;
+          currentLine.dimensions.height = Math.max(currentLine.dimensions.height, firstPart.height);
+        }
+        
+        // Adicionar a linha atual ao array de linhas
+        if (currentLine !== null && currentLine.content.length > 0) {
+          lines.push(currentLine);
+        }
+        
+        // Iniciar uma nova linha para a parte após o '\n'
+        if (parts[1] && parts[1].trim() !== '') {
+          // Aplicar trim na segunda parte
+          const trimmedSecondPart = parts[1].trim();
+
+          // Criar uma nova palavra para a segunda parte
+          const secondPart: MeasuredWord = {
+            ...word,
+            text: trimmedSecondPart,
+            length: trimmedSecondPart.length,
+            width: pdfDoc.widthOfString(trimmedSecondPart),
+            startOffset: word.startOffset + parts[0].length + 1 // +1 for the '\n'
+          };
+
+          // Iniciar uma nova linha com a segunda parte
+          currentLine = {
+            content: [secondPart],
+            dimensions: { width: secondPart.width, height: secondPart.height },
+            startOffset: secondPart.startOffset,
+            length: secondPart.length
+          };
+          currentLineWidth = secondPart.width;
+        } else {
+          // Se não houver texto após o '\n', iniciar uma linha vazia
+          currentLine = null;
+          currentLineWidth = 0;
+        }
+      } else {
+        // Comportamento original para palavras sem '\n'
+        
+        // Initialize currentLine if it's null
+        if (currentLine === null) {
+          currentLine = {
+            content: [],
+            dimensions: { width: 0, height: 0 },
+            startOffset: word.startOffset,
+            length: 0
+          };
+        }
+  
+        // Se a palavra cabe na linha atual, adiciona a palavra à linha
+        if (currentLineWidth + word.width <= containerWidth) {
+          currentLine.content.push(word);
+          currentLineWidth += word.width;
+          // Update the length of the line
+          currentLine.length += word.length;
+          currentLine.dimensions.width += word.width;
+          currentLine.dimensions.height = Math.max(currentLine.dimensions.height, word.height);
+        } else {
+          // Adiciona a linha atual ao array de linhas
+          lines.push(currentLine);
+          
+          // Inicia uma nova linha com a palavra atual
+          currentLine = {
+            content: [word],
+            dimensions: { width: word.width, height: word.height },
+            startOffset: word.startOffset,
+            length: word.length
+          };
+          currentLineWidth = word.width;
+        }
       }
     }
 

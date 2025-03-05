@@ -30,7 +30,7 @@ console.log("Iniciando aplicação");
 
 // Criar um novo documento PDF
 const doc = createPDFDocument({
-  // debug: true,
+  debug: true,
 });
 
 console.log("Documento PDF criado");
@@ -109,7 +109,7 @@ column(
           () => {
             // Texto do tweet - usando formatação Markdown
             text(
-              "Este, é um exemplo de **texto em negrito** e *texto em itálico* usando \nMarkdown no Pardal.",
+              "Este, é um exemplo de **texto em negrito** e *texto em itálico* usando Markdown no Pardal.",
               {
                 width: Sizing.grow(),
                 fillColor: colors.gray,
