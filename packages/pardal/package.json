@@ -1,6 +1,6 @@
 {
   "name": "pardal",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "PDF Automatic Rendering Dynamic Access Library",
   "type": "module",
   "main": "dist/index.js",
@@ -31,4 +31,4 @@
   ],
   "author": "",
   "license": "MIT"
-} 
+}
