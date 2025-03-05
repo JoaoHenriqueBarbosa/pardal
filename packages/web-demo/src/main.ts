@@ -5,17 +5,18 @@ import {
   Sizing,
   beginLayout,
   endLayout,
-  row,
-  column,
-  text,
+  image,
+  getCurrentContext,
+  measureWords,
+  wrapTextIntoLines,
   Alignment,
+  ImageFitMode,
+  column,
+  row,
+  text,
   TextAlignment,
-  ImageFitMode
-} from "./pardal";
+} from "pardal";
 import { Buffer } from "buffer";
-import { image } from "./pardal/interface/element-helpers";
-import { getCurrentContext } from "./pardal/domain/layout/context";
-import { measureWords, wrapTextIntoLines } from "./pardal/domain/layout/engine";
 
 // Definir algumas cores para usar no documento
 const colors = {
@@ -35,24 +36,23 @@ const doc = createPDFDocument({
 });
 
 if (getCurrentContext().debugMode) {
-      console.log("Documento PDF criado");
-    }
+  console.log("Documento PDF criado");
+}
 
-const imageBuffer = await fetch("https://via.assets.so/game.png").then((res) =>
-  res.arrayBuffer()
-);
+const loadImage = async () => {
+  const imageBuffer = await fetch("https://via.assets.so/game.png").then((res) =>
+    res.arrayBuffer()
+  );
 
-// Iniciar o layout
-beginLayout();
+  // Iniciar o layout
+  beginLayout();
 
-// Exemplo de obtenção das medidade de um texto quebrado em linhas
-
-const fontSize = 16;
-const containerWidth = 500;
-const words = measureWords("Este é um exemplo de texto quebrado em linhas. Ele é longo o suficiente para quebrar em várias linhas.", fontSize);
-const lines = wrapTextIntoLines("Este é um exemplo de texto quebrado em linhas. Ele é longo o suficiente para quebrar em várias linhas.", words, containerWidth, fontSize);
-console.log(lines);
-
+  // Exemplo de obtenção das medidade de um texto quebrado em linhas
+  const fontSize = 16;
+  const containerWidth = 500;
+  const words = measureWords("Este é um exemplo de texto quebrado em linhas. Ele é longo o suficiente para quebrar em várias linhas.", fontSize);
+  const lines = wrapTextIntoLines("Este é um exemplo de texto quebrado em linhas. Ele é longo o suficiente para quebrar em várias linhas.", words, containerWidth, fontSize);
+  console.log(lines);
 // Elemento principal
 image(
   `data:image/png;base64,${Buffer.from(imageBuffer).toString("base64")}`,
@@ -69,7 +69,7 @@ image(
     column(
       {
         width: Sizing.fixed(500),
-        height: Sizing.fit(200, 600),
+        height: Sizing.fit(),
         fillColor: colors.white,
         padding: 16,
         cornerRadius: 12,
@@ -159,27 +159,29 @@ image(
               textAlignment: TextAlignment.LEFT,
             });
 
-            image(
-              `data:image/png;base64,${Buffer.from(imageBuffer).toString(
-                "base64"
-              )}`,
-              {
-                width: Sizing.fixed(100),
-                height: Sizing.fixed(100),
-                fit: ImageFitMode.COVER,
-              }
-            );
-
+            
             // Exemplo com cantos arredondados
             image(
               `data:image/png;base64,${Buffer.from(imageBuffer).toString(
                 "base64"
               )}`,
               {
+                width: Sizing.grow(),
+                height: Sizing.fixed(200),
+                fit: ImageFitMode.COVER,
+                cornerRadius: 15,
+              }
+            );
+
+            // Exemplo com formato quadrado
+            image(
+              `data:image/png;base64,${Buffer.from(imageBuffer).toString(
+                "base64"
+              )}`,
+              {
                 width: Sizing.fixed(100),
                 height: Sizing.fixed(100),
                 fit: ImageFitMode.COVER,
-                cornerRadius: 15,
               }
             );
 
@@ -202,54 +204,45 @@ image(
   }
 );
 
-if (getCurrentContext().debugMode) {
-      console.log("Elementos criados, finalizando o layout");
-    }
+  // Finalizar o layout e renderizar o PDF
+  endLayout();
+  const pdfBytes = await renderToPDF(doc);
 
-// Finalizar o layout e obter comandos de renderização
-const commands = endLayout();
-if (getCurrentContext().debugMode) {
-      console.log(
-  `Layout finalizado com ${commands.length} comandos de renderização`
-);
-}
-
-// Renderizar toda a árvore no documento PDF
-renderToPDF(doc);
-
-if (getCurrentContext().debugMode) {
-      console.log("Renderização do PDF concluída");
-    }
-
-// Finalizar o documento
-doc.end();
-
-// Código para exibir o PDF no iframe
-let pdfUrl = "";
-const pdfBuffers: Buffer[] = [];
-doc.on("data", pdfBuffers.push.bind(pdfBuffers));
-doc.on("end", () => {
-  const pdfBuffer = Buffer.concat(pdfBuffers);
-  const blob = new Blob([pdfBuffer], { type: "application/pdf" });
-  pdfUrl = URL.createObjectURL(blob);
-
-  if (getCurrentContext().debugMode) {
-      console.log("PDF gerado e disponibilizado em URL");
-    }
+  // Criar um blob e um URL para download
+  const blob = new Blob([pdfBytes], { type: "application/pdf" });
+  const url = URL.createObjectURL(blob);
 
   // Exibir o PDF em um iframe
-  const iframe = document.createElement("iframe");
-  iframe.src = pdfUrl;
-  iframe.width = "100%";
-  iframe.height = "100%";
-  iframe.style.border = "none";
-
-  const container = document.getElementById("app");
-  if (container) {
-    container.innerHTML = "";
-    container.appendChild(iframe);
-    if (getCurrentContext().debugMode) {
-      console.log("PDF exibido no iframe");
-    }
+  const iframe = document.createElement('iframe');
+  iframe.src = url;
+  iframe.style.width = '100%';
+  iframe.style.height = '90vh';
+  iframe.style.border = 'none';
+  
+  const appElement = document.getElementById('app');
+  if (appElement) {
+    // Adicionar um título
+    const title = document.createElement('h1');
+    title.textContent = 'Pardal - PDF Demo';
+    appElement.appendChild(title);
+    
+    // Adicionar um botão de download
+    const downloadButton = document.createElement('a');
+    downloadButton.href = url;
+    downloadButton.download = 'pardal-demo.pdf';
+    downloadButton.textContent = 'Download PDF';
+    downloadButton.style.display = 'inline-block';
+    downloadButton.style.padding = '10px 15px';
+    downloadButton.style.backgroundColor = colors.blue;
+    downloadButton.style.color = colors.white;
+    downloadButton.style.textDecoration = 'none';
+    downloadButton.style.borderRadius = '4px';
+    downloadButton.style.margin = '10px 0';
+    appElement.appendChild(downloadButton);
+    
+    // Adicionar o iframe com o PDF
+    appElement.appendChild(iframe);
   }
-});
+};
+
+loadImage().catch(console.error); 

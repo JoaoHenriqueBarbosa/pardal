@@ -1,19 +1,21 @@
 {
-  "name": "clay-pdfkit",
+  "name": "pardal-monorepo",
+  "version": "0.1.0",
+  "description": "Monorepo para Pardal (PDF Automatic Rendering Dynamic Access Library)",
   "private": true,
-  "version": "0.0.0",
+  "workspaces": ["packages/*"],
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
+    "dev:lib": "bun run --cwd packages/pardal dev",
+    "dev:web": "bun run --cwd packages/web-demo dev",
+    "build:lib": "bun run --cwd packages/pardal build",
+    "build:web": "bun run --cwd packages/web-demo build",
+    "build": "bun run build:lib && bun run build:web",
+    "test": "bun run --cwd packages/pardal test"
   },
   "devDependencies": {
-    "@types/pdfkit": "^0.13.9",
-    "typescript": "~5.7.2",
-    "vite": "^6.2.0"
+    "typescript": "~5.7.2"
   },
-  "dependencies": {
-    "buffer": "^6.0.3"
-  }
+  "author": "",
+  "license": "MIT"
 }

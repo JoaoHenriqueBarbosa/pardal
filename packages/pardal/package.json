@@ -1,0 +1,31 @@
+{
+  "name": "pardal",
+  "version": "0.1.0",
+  "description": "PDF Automatic Rendering Dynamic Access Library",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "bun run --watch src/main.ts",
+    "build": "bun build src/index.ts --outdir dist --target browser --declaration",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/pdfkit": "^0.13.9",
+    "typescript": "~5.7.2"
+  },
+  "dependencies": {
+    "buffer": "^6.0.3"
+  },
+  "keywords": [
+    "pdf",
+    "layout",
+    "pardal",
+    "pdfkit"
+  ],
+  "author": "",
+  "license": "MIT"
+} 

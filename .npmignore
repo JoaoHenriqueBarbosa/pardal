@@ -1,0 +1,24 @@
+# Arquivos de desenvolvimento
+node_modules/
+src/
+public/
+.git/
+.gitignore
+bun.lock
+package-lock.json
+index.html
+clay.h
+how-clay-works.txt
+
+# Arquivos de configuração
+tsconfig.json
+vite.config.ts
+
+# Arquivos de teste
+**/*.test.ts
+**/*.spec.ts
+
+# Outros
+.DS_Store
+.vscode/
+.idea/ 
