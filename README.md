@@ -39,21 +39,24 @@ const doc = createPDFDocument();
 beginLayout();
 
 // Criar elementos
-column({
-  width: Sizing.grow(),
-  height: Sizing.grow(),
-  padding: 20,
-  children: [
+column(
+  {
+    width: Sizing.grow(),
+    height: Sizing.grow(),
+    padding: 20,
+  },
+  () => {
     text("Título do Documento", {
       fontSize: 24,
       fontWeight: "bold",
       marginBottom: 20
-    }),
+    });
+    
     text("Este é um exemplo de texto no documento PDF.", {
       fontSize: 16
-    })
-  ]
-});
+    });
+  }
+);
 
 // Finalizar o layout e renderizar o PDF
 endLayout();
@@ -79,6 +82,7 @@ import {
   row, 
   Sizing,
   Alignment,
+  TextAlignment,
   renderToPDF 
 } from 'pardal';
 
@@ -89,75 +93,85 @@ const doc = createPDFDocument();
 beginLayout();
 
 // Criar elementos com texto formatado e alinhamento
-column({
-  width: Sizing.grow(),
-  height: Sizing.grow(),
-  padding: 40,
-  children: [
+column(
+  {
+    width: Sizing.grow(),
+    height: Sizing.grow(),
+    padding: 40,
+  },
+  () => {
     // Título centralizado
     text("Relatório Anual 2023", {
       fontSize: 28,
-      textAlign: Alignment.CENTER,
+      textAlignment: TextAlignment.CENTER,
       marginBottom: 20
-    }),
+    });
     
     // Texto com formatação markdown centralizado
     text("Este é um exemplo de **texto em negrito** e *texto em itálico* centralizado.", {
       fontSize: 16,
-      textAlign: Alignment.CENTER,
+      textAlignment: TextAlignment.CENTER,
       marginBottom: 30
-    }),
+    });
     
     // Texto com formatação markdown alinhado à direita
     text("Este parágrafo está alinhado à **direita** e demonstra a capacidade de *rich text* com múltiplos estilos.", {
       fontSize: 14,
-      textAlign: Alignment.RIGHT,
+      textAlignment: TextAlignment.RIGHT,
       marginBottom: 20
-    }),
+    });
     
     // Container com bordas
-    row({
-      padding: 20,
-      backgroundColor: "#f5f5f5",
-      cornerRadius: 8,
-      children: [
+    row(
+      {
+        padding: 20,
+        fillColor: "#f5f5f5",
+        cornerRadius: 8,
+      },
+      () => {
         // Coluna com texto centralizado
-        column({
-          width: Sizing.percent(0.5),
-          padding: 10,
-          children: [
+        column(
+          {
+            width: Sizing.percent(0.5),
+            padding: 10,
+          },
+          () => {
             text("**Coluna 1**", {
               fontSize: 16,
-              textAlign: Alignment.CENTER,
+              textAlignment: TextAlignment.CENTER,
               marginBottom: 10
-            }),
+            });
+            
             text("Texto de exemplo com **alinhamento centralizado** dentro de uma coluna.", {
               fontSize: 14,
-              textAlign: Alignment.CENTER
-            })
-          ]
-        }),
+              textAlignment: TextAlignment.CENTER
+            });
+          }
+        );
         
         // Coluna com texto alinhado à esquerda
-        column({
-          width: Sizing.percent(0.5),
-          padding: 10,
-          children: [
+        column(
+          {
+            width: Sizing.percent(0.5),
+            padding: 10,
+          },
+          () => {
             text("**Coluna 2**", {
               fontSize: 16,
-              textAlign: Alignment.CENTER,
+              textAlignment: TextAlignment.CENTER,
               marginBottom: 10
-            }),
+            });
+            
             text("Texto de exemplo com **alinhamento à esquerda** dentro de uma coluna.", {
               fontSize: 14,
-              textAlign: Alignment.LEFT
-            })
-          ]
-        })
-      ]
-    })
-  ]
-});
+              textAlignment: TextAlignment.LEFT
+            });
+          }
+        );
+      }
+    );
+  }
+);
 
 // Finalizar o layout e renderizar o PDF
 endLayout();
