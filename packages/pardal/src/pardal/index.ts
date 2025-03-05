@@ -34,6 +34,7 @@ import { LayoutService } from "./application/layout-service";
 import { Dimensions, FontOptions, DEFAULT_FONTS } from "./domain/model/types";
 import { createPDFDocument as createPDF } from "./infrastructure/pdf-renderer";
 import { RenderCommand } from "./domain/rendering/commands";
+import { getCurrentContext } from "./domain/layout/context";
 
 // Exportar serviços de infraestrutura
 export { renderToPDF } from "./infrastructure/pdf-renderer";
@@ -79,5 +80,41 @@ export function createPDFDocument(options?: {
     options?.font || DEFAULT_FONTS
   );
 
+  return doc;
+}
+
+/**
+ * Adiciona uma nova página ao documento PDF
+ * 
+ * @param doc Documento PDF onde a página será adicionada
+ * @param options Opções para a nova página (tamanho, orientação)
+ * @returns O documento PDF atualizado
+ */
+export function addPage(
+  doc: any,
+  options?: {
+    size?: [number, number];
+    orientation?: 'portrait' | 'landscape';
+  }
+): any {
+  // Adiciona uma nova página ao documento
+  doc.addPage({
+    size: options?.size,
+    layout: options?.orientation
+  });
+  
+  // Inicializa o layout para a nova página
+  initialize(
+    { 
+      width: options?.size?.[0] ?? 595.28, 
+      height: options?.size?.[1] ?? 841.89 
+    },
+    getCurrentContext().debugMode,
+    getCurrentContext().fonts || DEFAULT_FONTS
+  );
+  
+  // Inicia um novo layout
+  beginLayout();
+  
   return doc;
 }

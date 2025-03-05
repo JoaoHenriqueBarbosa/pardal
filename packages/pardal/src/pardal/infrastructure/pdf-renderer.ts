@@ -11,7 +11,7 @@ import { PDFDocument } from '../domain/model/pdfkit';
  * Renderiza a árvore de comandos para um documento PDF
  * @returns ArrayBuffer contendo os bytes do PDF
  */
-export async function renderToPDF(doc: PDFDocument): Promise<ArrayBuffer> {
+export async function renderToPDF(doc: PDFDocument) {
   const { renderCommands } = getCurrentContext();
   
   // Verificar se já temos comandos de renderização
@@ -118,34 +118,7 @@ export async function renderToPDF(doc: PDFDocument): Promise<ArrayBuffer> {
     }
   }
   
-  // Finalizar o documento
-  doc.end();
-  
-  // Coletar chunks em um array de buffers
-  return new Promise<ArrayBuffer>((resolve) => {
-    const chunks: Uint8Array[] = [];
-    
-    doc.on('data', (chunk: Uint8Array) => {
-      chunks.push(chunk);
-    });
-    
-    doc.on('end', () => {
-      // Calcular o tamanho total
-      const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
-      
-      // Criar um buffer único
-      const result = new Uint8Array(totalLength);
-      
-      // Copiar cada chunk para o buffer final
-      let offset = 0;
-      for (const chunk of chunks) {
-        result.set(chunk, offset);
-        offset += chunk.length;
-      }
-      
-      resolve(result.buffer);
-    });
-  });
+  return doc;
 }
 
 /**

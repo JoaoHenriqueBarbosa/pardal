@@ -10,7 +10,8 @@ export {
   text,
   Alignment,
   TextAlignment,
-  ImageFitMode
+  ImageFitMode,
+  addPage,
 } from "./pardal";
 
 // Exportação do componente image
