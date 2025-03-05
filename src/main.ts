@@ -109,7 +109,7 @@ column(
           () => {
             // Texto do tweet - usando formatação Markdown
             text(
-              "Este é um exemplo de **texto em negrito** e *texto em itálico* usando Markdown no Pardal.",
+              "Este, é um exemplo de **texto em negrito** e *texto em itálico* usando \nMarkdown no Pardal.",
               {
                 width: Sizing.grow(),
                 fillColor: colors.gray,

@@ -1,30 +1,29 @@
-// Utilitários para processamento de texto Markdown
-import { FontOptions } from "../model/types";
-
-// Tipo de segmento de texto com estilo específico
-export interface TextSegment {
-  text: string;
-  bold: boolean;
-  italic: boolean;
-}
-
+import { MeasuredWord } from '../model/element';
 /**
  * Processa um texto com formatação Markdown básica (negrito e itálico)
- * e o divide em segmentos com diferentes estilos, suportando estilos aninhados
+ * e retorna um array de segmentos de texto com suas propriedades.
+ * 
+ * Suporta:
+ * - **texto** para negrito
+ * - *texto* para itálico
+ * - ***texto*** para negrito e itálico
  * 
  * @param text Texto com formatação Markdown
- * @returns Array de segmentos de texto com suas propriedades de estilo
+ * @returns Array de segmentos de texto com suas propriedades de estilo, onde cada palavra é um segmento separado
  */
-export function parseMarkdownText(text: string): TextSegment[] {
+export function parseMarkdownText(text: string): Partial<MeasuredWord>[] {
   if (!text) return [];
   
-  // Se não há marcadores, retornar texto simples
+  // Se não há marcadores, retornar texto dividido em palavras
+  // Note: este caso simples também preservará espaços nos resultados
   if (!text.includes('*')) {
-    return [{ text, bold: false, italic: false }];
+    return text
+      .match(/(\S+|\s+)/g)
+      ?.map(word => ({ text: word, bold: false, italic: false })) || [];
   }
   
   // Implementação de máquina de estados para processamento de Markdown
-  const segments: TextSegment[] = [];
+  const segments: Partial<MeasuredWord>[] = [];
   
   // Estados da máquina
   let inBold = false;
@@ -75,74 +74,54 @@ export function parseMarkdownText(text: string): TextSegment[] {
   // Adicionar último segmento
   addCurrentSegment();
   
-  // Remover marcadores não fechados (limpar o texto)
+  // Remover marcadores não fechados e dividir em palavras
   return cleanSegments(segments);
 }
 
 /**
  * Limpa e corrige segmentos, removendo marcadores Markdown não fechados corretamente
+ * e preserva os espaços como "palavras" individuais
  */
-function cleanSegments(segments: TextSegment[]): TextSegment[] {
-  const result = segments.map(segment => {
+function cleanSegments(segments: Partial<MeasuredWord>[]): Partial<MeasuredWord>[] {
+  // Primeiro limpamos os segmentos para remover marcadores que sobraram
+  const cleanedSegments = segments.map(segment => {
     return {
       ...segment,
       // Remover possíveis marcadores Markdown que sobraram no texto
-      text: segment.text
+      text: (segment.text || '')
         .replace(/\*\*/g, '')
         .replace(/\*/g, '')
     };
-  });
+  }).filter(segment => segment.text.length > 0);
+
+  // Agora dividimos cada segmento preservando os espaços como palavras individuais
+  const wordSegments: Partial<MeasuredWord>[] = [];
   
-  // Remover segmentos vazios e mesclar segmentos adjacentes do mesmo estilo
-  const merged: TextSegment[] = [];
-  let current: TextSegment | null = null;
-  
-  for (const segment of result) {
-    // Pular segmentos vazios
-    if (!segment.text.trim()) continue;
+  for (const segment of cleanedSegments) {
+    // Usamos regex para capturar tanto palavras quanto espaços como tokens separados
+    // O regex (\S+|\s+) captura sequências de caracteres não-espaço OU sequências de espaços
+    const tokens = segment.text.match(/(\S+|\s+)/g) || [];
     
-    if (!current) {
-      current = { ...segment };
-      merged.push(current);
-      continue;
-    }
-    
-    // Se o estilo for o mesmo, mesclar
-    if (current.bold === segment.bold && current.italic === segment.italic) {
-      current.text += segment.text;
-    } else {
-      // Senão, adicionar como novo segmento
-      current = { ...segment };
-      merged.push(current);
+    for (const token of tokens) {
+      wordSegments.push({
+        text: token,
+        bold: segment.bold,
+        italic: segment.italic
+      });
     }
   }
   
-  return merged;
+  return wordSegments;
 }
 
 /**
- * Determina a fonte a ser usada com base nas propriedades de estilo
+ * Remove os marcadores Markdown do texto e retorna um array de palavras individuais
  */
-export function getFontForSegment(
-  segment: TextSegment, 
-  fonts: FontOptions
-): string {
-  if (segment.bold && segment.italic) {
-    return fonts.boldItalic || fonts.bold || fonts.regular || 'Helvetica-Bold';
-  } else if (segment.bold) {
-    return fonts.bold || fonts.regular || 'Helvetica-Bold';
-  } else if (segment.italic) {
-    return fonts.regularItalic || fonts.regular || 'Helvetica-Oblique';
-  } else {
-    return fonts.regular || 'Helvetica';
-  }
-}
-
-/**
- * Remove os marcadores Markdown do texto
- */
-export function stripMarkdown(text: string): string {
-  return text
+export function stripMarkdown(text: string): string[] {
+  const cleanText = text
     .replace(/\*\*/g, '')  // Remove **
     .replace(/\*/g, '');   // Remove *
+  
+  // Divide o texto em palavras individuais e remove espaços vazios
+  return cleanText.split(/\s+/).filter(word => word.length > 0);
 } 

@@ -1,9 +1,10 @@
 // Importações
-import { Direction, SizingType, Vector2, DEFAULT_MAX_SIZE, DEFAULT_MIN_SIZE, LayoutAlignmentX, LayoutAlignmentY, TextAlignment } from '../model/types';
+import { Direction, SizingType, Vector2, DEFAULT_MAX_SIZE, DEFAULT_MIN_SIZE, LayoutAlignmentX, LayoutAlignmentY, TextAlignment, FontOptions } from '../model/types';
 import { LayoutElement, MeasuredWord, WrappedTextLine } from '../model/element';
 import { getCurrentContext } from './context';
-import { RenderCommand, RenderCommandType, createCircleCommand, createRectangleCommand, createTextCommand, createTextCommandFromConfig } from '../rendering/commands';
+import { createCircleCommand, createRectangleCommand, createTextCommandFromConfig } from '../rendering/commands';
 import { parseColor } from '../utils/color';
+import { parseMarkdownText } from '../utils/markdown';
 
 declare const PDFDocument: typeof import('pdfkit');
 
@@ -42,6 +43,25 @@ function measureTextDimensions(textContent: string, fontSize: number = 16): { wi
   }
 }
 
+
+/**
+ * Determina a fonte a ser usada com base nas propriedades de estilo
+ */
+export function getFontForWord(
+  word: Partial<MeasuredWord>, 
+  fonts: FontOptions | undefined
+): string {
+  if (word.bold && word.italic) {
+    return fonts?.boldItalic || fonts?.bold || fonts?.regular || 'Helvetica-Bold';
+  } else if (word.bold) {
+    return fonts?.bold || fonts?.regular || 'Helvetica-Bold';
+  } else if (word.italic) {
+    return fonts?.regularItalic || fonts?.regular || 'Helvetica-Oblique';
+  } else {
+    return fonts?.regular || 'Helvetica';
+  }
+}
+
 /**
  * Medir palavras individuais em um texto
  * Reimplementado para seguir mais de perto a abordagem do Clay
@@ -52,68 +72,48 @@ function measureWords(text: string, fontSize: number = 16): MeasuredWord[] {
   }
   
   try {
-    const pdfDoc = new PDFDocument({ autoFirstPage: false });
+    const pdfDoc = new PDFDocument();
     
     const currentContext = getCurrentContext();
-    const fontFamily = currentContext.fonts?.regular || 'Helvetica';
-    pdfDoc.font(fontFamily).fontSize(fontSize);
+    pdfDoc.fontSize(fontSize);
     
     const words: MeasuredWord[] = [];
-    const spaceWidth = pdfDoc.widthOfString(' ');
     
-    // Seguindo a abordagem do Clay para identificar palavras
-    let start = 0;
-    let end = 0;
+    const wordsToProcess = parseMarkdownText(text);
     
-    // Para garantir que a última palavra seja processada
-    const processedText = text + ' ';
-    
-    while (end < processedText.length) {
-      const current = processedText[end];
+    for (let i = 0; i < wordsToProcess.length; i++) {
+      const word = wordsToProcess[i];
+      const fontName = getFontForWord(word, currentContext.fonts);
+      pdfDoc.font(fontName);
       
-      if (current === ' ' || current === '\n') {
-        // Medir a palavra atual (se houver)
-        if (end > start) {
-          const wordText = processedText.substring(start, end);
-          const dimensions = pdfDoc.widthOfString(wordText);
-          
-          // No Clay, eles guardam a largura do espaço junto à palavra
-          if (current === ' ') {
-            words.push({
-              startOffset: start,
-              length: end - start + 1, // Incluir o espaço
-              width: dimensions + spaceWidth,
-              next: words.length + 1 // Próximo índice
-            });
-          } else {
-            words.push({
-              startOffset: start,
-              length: end - start,
-              width: dimensions,
-              next: words.length + 1
-            });
-          }
-        }
-        
-        // Adicionar marcador especial para quebra de linha (como faz o Clay)
-        if (current === '\n') {
-          words.push({
-            startOffset: end + 1,
-            length: 0,
-            width: 0,
-            next: words.length + 1
-          });
-        }
-        
-        start = end + 1;
+      // Safe width calculation with fallback
+      let width = 0;
+      try {
+        width = pdfDoc.widthOfString(word.text || '');
+      } catch (error) {
+        console.warn(`Error measuring width for "${word.text}":`, error);
+        width = (word.text?.length || 0) * (fontSize / 2); // Fallback estimation
       }
       
-      end++;
-    }
-    
-    // Corrigir o último next para -1 (final da lista)
-    if (words.length > 0) {
-      words[words.length - 1].next = -1;
+      // Safe height calculation with fallback
+      let height = 0;
+      try {
+        height = pdfDoc.heightOfString(word.text || '');
+      } catch (error) {
+        console.warn(`Error measuring height for "${word.text}":`, error);
+        height = fontSize * 1.2; // Common line height approximation
+      }
+
+      words.push({
+        startOffset: i,
+        length: word.text?.length || 0,
+        width: width,
+        height: height,
+        next: i + 1,
+        bold: word.bold || false,
+        italic: word.italic || false,
+        text: word.text || ''
+      });
     }
     
     pdfDoc.end();
@@ -132,8 +132,7 @@ function measureWords(text: string, fontSize: number = 16): MeasuredWord[] {
 function wrapTextIntoLines(
   text: string, 
   words: MeasuredWord[], 
-  containerWidth: number, 
-  lineHeight: number = 0,
+  containerWidth: number,
   fontSize: number = 16
 ): WrappedTextLine[] {
   if (!text || text.length === 0 || words.length === 0) {
@@ -147,121 +146,52 @@ function wrapTextIntoLines(
     pdfDoc.font(fontFamily).fontSize(fontSize);
     
     const lines: WrappedTextLine[] = [];
-    const actualLineHeight = lineHeight || (fontSize * 1.2);
-    const spaceWidth = pdfDoc.widthOfString(' ');
+    let currentLine: WrappedTextLine | null = null;
+    let currentLineWidth = 0;
     
-    let lineWidth = 0;
-    let lineLengthChars = 0;
-    let lineStartOffset = 0;
-    let wordIndex = 0;
-    
-    // Verificar se o texto completo cabe no container sem quebras de linha
-    // Isso é uma otimização que o Clay também faz
-    const noNewlines = !words.some(w => w.length === 0);
-    const totalWidth = words.reduce((sum, w) => sum + w.width, 0);
-    
-    if (noNewlines && totalWidth <= containerWidth) {
-      // O texto inteiro cabe como uma única linha
-      lines.push({
-        dimensions: { width: totalWidth, height: actualLineHeight },
-        content: text,
-        startOffset: 0,
-        length: text.length
-      });
-      
-      pdfDoc.end();
-      return lines;
-    }
-    
-    // Processar palavra por palavra, seguindo o algoritmo do Clay
-    while (wordIndex < words.length) {
-      const word = words[wordIndex];
-      const wordText = text.substring(word.startOffset, word.startOffset + word.length);
-      
-      // Caso 1: Palavra de quebra de linha
-      if (word.length === 0) {
-        // Finalizar a linha atual
-        if (lineLengthChars > 0) {
-          const finalCharIsSpace = text[lineStartOffset + lineLengthChars - 1] === ' ';
-          const adjustedWidth = finalCharIsSpace ? lineWidth - spaceWidth : lineWidth;
-          const adjustedLength = finalCharIsSpace ? lineLengthChars - 1 : lineLengthChars;
-          
-          lines.push({
-            dimensions: { width: adjustedWidth, height: actualLineHeight },
-            content: text.substring(lineStartOffset, lineStartOffset + adjustedLength),
-            startOffset: lineStartOffset,
-            length: adjustedLength
-          });
-        }
-        
-        // Iniciar nova linha
-        lineWidth = 0;
-        lineLengthChars = 0;
-        lineStartOffset = word.startOffset;
-        wordIndex++;
-        continue;
+    for (const word of words) {
+      // Initialize currentLine if it's null
+      if (currentLine === null) {
+        currentLine = {
+          content: [],
+          dimensions: { width: 0, height: 0 },
+          startOffset: word.startOffset,
+          length: 0
+        };
       }
-      
-      // Caso 2: Única palavra na linha é grande demais
-      if (lineLengthChars === 0 && word.width > containerWidth) {
-        lines.push({
-          dimensions: { width: word.width, height: actualLineHeight },
-          content: wordText,
+
+      // Se a palavra cabe na linha atual, adiciona a palavra à linha
+      if (currentLineWidth + word.width <= containerWidth) {
+        currentLine.content.push(word);
+        currentLineWidth += word.width;
+        // Update the length of the line
+        currentLine.length += word.length;
+        currentLine.dimensions.width += word.width;
+        currentLine.dimensions.height = Math.max(currentLine.dimensions.height, word.height);
+      } else {
+        // Adiciona a linha atual ao array de linhas
+        lines.push(currentLine);
+        
+        // Inicia uma nova linha com a palavra atual
+        currentLine = {
+          content: [word],
+          dimensions: { width: word.width, height: word.height },
           startOffset: word.startOffset,
           length: word.length
-        });
-        
-        lineStartOffset = word.startOffset + word.length;
-        wordIndex++;
-        continue;
+        };
+        currentLineWidth = word.width;
       }
-      
-      // Caso 3: A palavra não cabe na linha atual
-      if (lineLengthChars > 0 && lineWidth + word.width > containerWidth) {
-        // Finalizar a linha atual
-        const finalCharIsSpace = text[lineStartOffset + lineLengthChars - 1] === ' ';
-        const adjustedWidth = finalCharIsSpace ? lineWidth - spaceWidth : lineWidth;
-        const adjustedLength = finalCharIsSpace ? lineLengthChars - 1 : lineLengthChars;
-        
-        lines.push({
-          dimensions: { width: adjustedWidth, height: actualLineHeight },
-          content: text.substring(lineStartOffset, lineStartOffset + adjustedLength),
-          startOffset: lineStartOffset,
-          length: adjustedLength
-        });
-        
-        // Começar nova linha com a palavra atual
-        lineWidth = 0;
-        lineLengthChars = 0;
-        lineStartOffset = word.startOffset;
-        // Não incrementamos wordIndex para reprocessar a palavra na nova linha
-        continue;
-      }
-      
-      // Caso 4: A palavra cabe na linha atual
-      lineWidth += word.width;
-      lineLengthChars += word.length;
-      wordIndex++;
     }
-    
-    // Processar a última linha (se houver conteúdo)
-    if (lineLengthChars > 0) {
-      const finalCharIsSpace = text[lineStartOffset + lineLengthChars - 1] === ' ';
-      const adjustedWidth = finalCharIsSpace ? lineWidth - spaceWidth : lineWidth;
-      const adjustedLength = finalCharIsSpace ? lineLengthChars - 1 : lineLengthChars;
-      
-      lines.push({
-        dimensions: { width: adjustedWidth, height: actualLineHeight },
-        content: text.substring(lineStartOffset, lineStartOffset + adjustedLength),
-        startOffset: lineStartOffset,
-        length: adjustedLength
-      });
+
+    // Não esquecer de adicionar a última linha, se existir
+    if (currentLine !== null && currentLine.content.length > 0) {
+      lines.push(currentLine);
     }
-    
+
     pdfDoc.end();
     return lines;
   } catch (error) {
-    console.error('Erro ao quebrar texto em linhas:', error);
+    console.error('Erro ao quebrar texto:', error);
     return [];
   }
 }
@@ -315,7 +245,6 @@ function processTextWrapping(): void {
   for (const element of currentContext.layoutElements) {
     if (element.elementType === 'text' && element.textConfig) {
       const fontSize = element.textConfig.fontSize || 16;
-      const lineHeight = element.textConfig.lineHeight || (fontSize * 1.2);
       
       // Medir as palavras se ainda não foram medidas
       if (!element.measuredWords) {
@@ -330,7 +259,6 @@ function processTextWrapping(): void {
         element.textConfig.content,
         element.measuredWords,
         availableWidth,
-        lineHeight,
         fontSize
       );
       
@@ -476,7 +404,6 @@ function calculateElementFitSize(element: LayoutElement): void {
     // Obter texto e configurações
     const textContent = element.textConfig.content || '';
     const fontSize = element.textConfig.fontSize || 16;
-    const lineHeight = element.textConfig.lineHeight || fontSize * 1.2;
     
     // Medir palavras
     const words = measureWords(textContent, fontSize);
@@ -490,7 +417,6 @@ function calculateElementFitSize(element: LayoutElement): void {
         textContent,
         words,
         element.dimensions.width - (layoutConfig.padding.left + layoutConfig.padding.right),
-        lineHeight,
         fontSize
       );
       
@@ -520,7 +446,7 @@ function calculateElementFitSize(element: LayoutElement): void {
       if (!element.wrappedTextLines) {
         element.wrappedTextLines = [{
           dimensions: { width, height },
-          content: textContent,
+          content: words,
           startOffset: 0,
           length: textContent.length
         }];
@@ -983,7 +909,6 @@ function positionElement(element: LayoutElement, position: Vector2): void {
         element.textConfig.content,
         element.measuredWords,
         boundingBox.width - (element.layoutConfig.padding.left + element.layoutConfig.padding.right),
-        lineHeight,
         fontSize
       );
       
@@ -1029,7 +954,7 @@ function positionElement(element: LayoutElement, position: Vector2): void {
       }
       
       for (const line of element.wrappedTextLines) {
-        if (line.content.trim().length === 0) {
+        if (line.content.length === 0) {
           // Linha vazia, apenas avançar a posição y
           yOffset += line.dimensions.height;
           continue;
@@ -1101,7 +1026,7 @@ function positionElement(element: LayoutElement, position: Vector2): void {
         createTextCommandFromConfig(
           boundingBox,
           {
-            content: element.textConfig.content,
+            content: element.measuredWords || [],
             color: color,
             fontId: element.textConfig.fontId,
             fontSize: fontSize,

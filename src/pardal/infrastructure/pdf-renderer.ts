@@ -1,8 +1,8 @@
-import { RenderCommand, RenderCommandType } from '../domain/rendering/commands';
+import { RenderCommandType } from '../domain/rendering/commands';
 import { colorToHex } from '../domain/utils/color';
 import { getCurrentContext } from '../domain/layout/context';
 import { FontOptions, DEFAULT_FONTS } from "../domain/model/types";
-import { parseMarkdownText, getFontForSegment } from '../domain/utils/markdown';
+import { getFontForWord } from '../domain/layout/engine';
 
 // Declaração para o PDFKit
 declare const PDFDocument: typeof import('pdfkit');
@@ -93,18 +93,15 @@ export function renderToPDF(doc: typeof PDFDocument): void {
         if (command.renderData.text) {
           const { content, color, fontSize } = command.renderData.text;
           
-          console.log(`Desenhando texto em (${x}, ${y}): "${content}"`);
+          console.log(`Desenhando texto em (${x}, ${y}): "${content.map(segment => segment.text).join('')}"`);
           console.log(`Fonte: ${fontSize}px, Cor: rgb(${color.r}, ${color.g}, ${color.b})`);
           
           // Usar formato hexadecimal para compatibilidade
           const hexColor = colorToHex(color);
           const context = getCurrentContext();
           
-          // Processar o texto para Markdown
-          const textSegments = parseMarkdownText(content);
-          
           // Se não houver segmentos com formatação, renderize normalmente
-          if (textSegments.length <= 1) {
+          if (content.length <= 1) {
             // Determinação da fonte padrão
             let fontFamily = DEFAULT_FONTS.regular || 'Helvetica';
             if (context.fonts) {
@@ -120,19 +117,12 @@ export function renderToPDF(doc: typeof PDFDocument): void {
             // Calcular o ajuste de baseline para centralização vertical
             const baselineAdjustment = (height - doc.currentLineHeight()) / 2;
 
-            doc.text(content, x, y + baselineAdjustment, {
+            doc.text(content.map(segment => segment.text).join(' '), x, y + baselineAdjustment, {
               width: width,
               height: height,
               align: 'left'
             });
           } else {
-            // Renderizar texto formatado com Markdown
-            let textOptions = {
-              width: width,
-              height: height,
-              align: 'left'
-            };
-            
             // Posição inicial para renderização
             let currentY = y;
             
@@ -145,9 +135,9 @@ export function renderToPDF(doc: typeof PDFDocument): void {
             let lineWidth = 0;
             
             // Medir e organizar segmentos em linhas
-            for (const segment of textSegments) {
+            for (const segment of content) {
               // Determinar a fonte baseada no estilo
-              const fontFamily = getFontForSegment(segment, context.fonts || DEFAULT_FONTS) || 'Helvetica';
+              const fontFamily = getFontForWord(segment, context.fonts || DEFAULT_FONTS) || 'Helvetica';
               
               // Medir o texto com a fonte correta
               doc.font(fontFamily).fontSize(fontSize || 16);

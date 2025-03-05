@@ -2,15 +2,19 @@ import { ChildAlignment, Color, CornerRadius, Direction, ElementType, LayoutConf
 
 // Interfaces para processamento de texto
 export interface MeasuredWord {
+  text: string;
   startOffset: number;  // Posição inicial no texto original
   length: number;       // Comprimento da palavra
   width: number;        // Largura calculada
+  height: number;       // Altura calculada
   next?: number;        // Índice da próxima palavra
+  bold?: boolean;       // Indica se a palavra é negrito
+  italic?: boolean;     // Indica se a palavra é itálico
 }
 
 export interface WrappedTextLine {
   dimensions: { width: number, height: number };
-  content: string;
+  content: MeasuredWord[];
   startOffset: number;
   length: number;
 }

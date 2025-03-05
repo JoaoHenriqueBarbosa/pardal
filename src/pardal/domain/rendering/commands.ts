@@ -1,3 +1,4 @@
+import { MeasuredWord } from '../model/element';
 import { BoundingBox, Color, CornerRadius } from '../model/types';
 
 // Tipos de comandos de renderização
@@ -21,7 +22,7 @@ export interface RenderCommand {
       backgroundColor: Color;
     };
     text?: {
-      content: string;
+      content: MeasuredWord[];
       color: Color;
       fontId?: number;
       fontSize?: number;
@@ -72,7 +73,7 @@ export function createCircleCommand(
 
 export function createTextCommand(
   boundingBox: BoundingBox,
-  content: string,
+  content: MeasuredWord[],
   color: Color,
   fontOptions: {
     fontId?: number,
@@ -103,7 +104,7 @@ export function createTextCommand(
 export function createTextCommandFromConfig(
   boundingBox: BoundingBox,
   textConfig: {
-    content: string,
+    content: MeasuredWord[],
     color?: Color,
     fontId?: number,
     fontSize?: number,
