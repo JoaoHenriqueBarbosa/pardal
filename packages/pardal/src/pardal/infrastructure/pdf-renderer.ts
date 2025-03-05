@@ -5,15 +5,13 @@ import { FontOptions, DEFAULT_FONTS } from "../domain/model/types";
 import { getFontForWord } from '../domain/layout/engine';
 import { CornerRadius } from '../domain/model/types';
 import { RenderCommand } from '../domain/rendering/commands';
-
-// Declaração para o PDFKit
-declare const PDFDocument: typeof import('pdfkit');
+import { PDFDocument } from '../domain/model/pdfkit';
 
 /**
  * Renderiza a árvore de comandos para um documento PDF
  * @returns ArrayBuffer contendo os bytes do PDF
  */
-export async function renderToPDF(doc: typeof PDFDocument): Promise<ArrayBuffer> {
+export async function renderToPDF(doc: PDFDocument): Promise<ArrayBuffer> {
   const { renderCommands } = getCurrentContext();
   
   // Verificar se já temos comandos de renderização
@@ -158,7 +156,7 @@ export function createPDFDocument(options?: {
   size?: [number, number];
   debug?: boolean;
   font?: FontOptions;
-}): typeof PDFDocument {
+}): PDFDocument {
   return new PDFDocument({
     margins: options?.margin !== undefined ? options.margin : { top: 0, left: 0, bottom: 0, right: 0 },
     size: options?.size || [595.28, 841.89],
@@ -170,7 +168,7 @@ export function createPDFDocument(options?: {
  * Desenha uma imagem no documento PDF
  */
 function drawImage(
-  doc: typeof PDFDocument, 
+  doc: PDFDocument, 
   x: number, 
   y: number, 
   width: number, 
@@ -310,7 +308,7 @@ function drawImage(
 }
 
 function drawRectangle(
-  doc: typeof PDFDocument,
+  doc: PDFDocument,
   x: number,
   y: number,
   width: number,
@@ -345,7 +343,7 @@ function drawRectangle(
 }
 
 function drawCircle(
-  doc: typeof PDFDocument,
+  doc: PDFDocument,
   x: number,
   y: number,
   width: number,
@@ -367,7 +365,7 @@ function drawCircle(
 }
 
 function drawText(
-  doc: typeof PDFDocument,
+  doc: PDFDocument,
   command: RenderCommand
 ): void {
   if (!command.renderData.text) return;

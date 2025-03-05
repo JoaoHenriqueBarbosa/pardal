@@ -10,7 +10,7 @@
   ],
   "scripts": {
     "dev": "bun run --watch src/main.ts",
-    "build": "bun build src/index.ts --outdir dist --target browser --declaration",
+    "build": "tsc && bun build src/index.ts --outdir dist --target browser --external pdfkit",
     "test": "bun test"
   },
   "devDependencies": {
@@ -19,6 +19,9 @@
   },
   "dependencies": {
     "buffer": "^6.0.3"
+  },
+  "peerDependencies": {
+    "pdfkit": ">=0.13.0"
   },
   "keywords": [
     "pdf",

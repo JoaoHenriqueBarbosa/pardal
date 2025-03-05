@@ -8,9 +8,11 @@
   "scripts": {
     "dev:lib": "bun run --cwd packages/pardal dev",
     "dev:web": "bun run --cwd packages/web-demo dev",
+    "dev:server": "bun run --cwd packages/server-demo dev",
     "build:lib": "bun run --cwd packages/pardal build",
     "build:web": "bun run --cwd packages/web-demo build",
-    "build": "bun run build:lib && bun run build:web",
+    "build:server": "bun run --cwd packages/server-demo build",
+    "build": "bun run build:lib && bun run build:web && bun run build:server",
     "test": "bun run --cwd packages/pardal test"
   },
   "devDependencies": {

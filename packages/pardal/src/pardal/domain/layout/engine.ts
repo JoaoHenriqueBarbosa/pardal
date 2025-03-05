@@ -5,8 +5,7 @@ import { getCurrentContext } from './context';
 import { createCircleCommand, createRectangleCommand, createTextCommandFromConfig, createImageCommandFromConfig } from '../rendering/commands';
 import { parseColor } from '../utils/color';
 import { parseMarkdownText } from '../utils/markdown';
-
-declare const PDFDocument: typeof import('pdfkit');
+import { PDFDocument } from '../model/pdfkit';
 
 // Set para rastrear elementos que já foram processados
 const processedElements = new Set<string>();

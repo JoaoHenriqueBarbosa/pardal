@@ -185,4 +185,4 @@ export enum ImageFitMode {
   FILL = 'FILL',           // Preenche todo o espaço, podendo distorcer
   CONTAIN = 'CONTAIN',     // Mantém proporções, cabe inteira no espaço
   COVER = 'COVER'          // Mantém proporções, cobre todo o espaço (pode cortar)
-} 
+}

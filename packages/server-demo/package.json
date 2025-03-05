@@ -1,0 +1,19 @@
+{
+  "name": "server-demo",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "build": "bun build src/index.ts --outdir dist"
+  },
+  "dependencies": {
+    "pardal": "workspace:*",
+    "pdfkit": "0.16.0"
+  },
+  "devDependencies": {
+    "bun-types": "latest",
+    "typescript": "~5.7.2"
+  }
+} 
