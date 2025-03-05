@@ -1,5 +1,5 @@
 import { LayoutConfig, ElementType, Direction, LayoutAlignmentX, LayoutAlignmentY, TextElementConfig, TextAlignment, TextWrapMode, ImageElementConfig, ImageFitMode } from '../domain/model/types';
-import { ElementDeclaration, LayoutElement, ensureId } from '../domain/model/element';
+import { ElementDeclaration, LayoutElement } from '../domain/model/element';
 import { parseColor } from '../domain/utils/color';
 import { parsePadding } from '../domain/utils/padding';
 import { getCurrentContext } from '../domain/layout/context';

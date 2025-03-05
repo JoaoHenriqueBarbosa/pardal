@@ -3,12 +3,11 @@ import { colorToHex } from '../domain/utils/color';
 import { getCurrentContext } from '../domain/layout/context';
 import { FontOptions, DEFAULT_FONTS } from "../domain/model/types";
 import { getFontForWord } from '../domain/layout/engine';
-import { Color, CornerRadius } from '../domain/model/types';
+import { CornerRadius } from '../domain/model/types';
 import { RenderCommand } from '../domain/rendering/commands';
-import { MeasuredWord } from '../domain/model/element';
 
 // Declaração para o PDFKit
-declare const PDFDocument: any;
+declare const PDFDocument: typeof import('pdfkit');
 
 /**
  * Renderiza a árvore de comandos para um documento PDF
@@ -52,7 +51,7 @@ export function renderToPDF(doc: typeof PDFDocument): void {
       case RenderCommandType.CIRCLE:
         if (command.renderData.circle) {
           const { backgroundColor } = command.renderData.circle;
-          drawCircle(doc, x, y, width, height, backgroundColor);
+          drawCircle(doc, x, y, width, backgroundColor);
         }
         break;
         
@@ -131,7 +130,7 @@ export function createPDFDocument(options?: {
  * Desenha uma imagem no documento PDF
  */
 function drawImage(
-  doc: any, 
+  doc: typeof PDFDocument, 
   x: number, 
   y: number, 
   width: number, 
@@ -233,7 +232,6 @@ function drawImage(
         ca: opacity
       });
       
-      gs.end();
       doc.page.ext_gstates[`Gs${opacity}`] = gs;
       doc.addContent(`/Gs${opacity} gs`);
     }
@@ -250,7 +248,7 @@ function drawImage(
 }
 
 function drawRectangle(
-  doc: any,
+  doc: typeof PDFDocument,
   x: number,
   y: number,
   width: number,
@@ -279,11 +277,10 @@ function drawRectangle(
 }
 
 function drawCircle(
-  doc: any,
+  doc: typeof PDFDocument,
   x: number,
   y: number,
   width: number,
-  height: number,
   backgroundColor: { r: number, g: number, b: number, a: number }
 ): void {
   const radius = width / 2;
@@ -300,7 +297,7 @@ function drawCircle(
 }
 
 function drawText(
-  doc: any,
+  doc: typeof PDFDocument,
   command: RenderCommand
 ): void {
   if (!command.renderData.text) return;

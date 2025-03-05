@@ -7,12 +7,10 @@ import {
   endLayout,
   row,
   column,
-  circle,
   text,
   Alignment,
   TextAlignment,
-  ImageFitMode,
-  rect,
+  ImageFitMode
 } from "./pardal";
 import { Buffer } from "buffer";
 import { image } from "./pardal/interface/element-helpers";

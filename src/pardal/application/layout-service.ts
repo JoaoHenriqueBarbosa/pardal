@@ -1,6 +1,6 @@
 import { Dimensions } from '../domain/model/types';
 import { FontOptions } from '../domain/model/types';
-import { beginLayout, endLayout, getCurrentContext, initialize } from '../domain/layout/context';
+import { beginLayout, getCurrentContext, initialize } from '../domain/layout/context';
 import { calculateFinalLayout } from '../domain/layout/engine';
 import { RenderCommand } from '../domain/rendering/commands';
 

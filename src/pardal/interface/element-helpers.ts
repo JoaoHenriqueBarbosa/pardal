@@ -1,4 +1,4 @@
-import { ElementType, Direction, TextElementConfig } from '../domain/model/types';
+import { ElementType, Direction } from '../domain/model/types';
 import { ElementDeclaration, ensureId } from '../domain/model/element';
 import { createElement, endElement } from '../application/element-factory';
 
