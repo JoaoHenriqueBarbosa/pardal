@@ -14,6 +14,8 @@ import {
 } from "./pardal";
 import { Buffer } from "buffer";
 import { image } from "./pardal/interface/element-helpers";
+import { getCurrentContext } from "./pardal/domain/layout/context";
+import { measureWords, wrapTextIntoLines } from "./pardal/domain/layout/engine";
 
 // Definir algumas cores para usar no documento
 const colors = {
@@ -27,14 +29,14 @@ const colors = {
   purple: "#800080",
 };
 
-console.log("Iniciando aplicação");
-
 // Criar um novo documento PDF
 const doc = createPDFDocument({
   // debug: true,
 });
 
-console.log("Documento PDF criado");
+if (getCurrentContext().debugMode) {
+      console.log("Documento PDF criado");
+    }
 
 const imageBuffer = await fetch("https://via.assets.so/game.png").then((res) =>
   res.arrayBuffer()
@@ -42,6 +44,14 @@ const imageBuffer = await fetch("https://via.assets.so/game.png").then((res) =>
 
 // Iniciar o layout
 beginLayout();
+
+// Exemplo de obtenção das medidade de um texto quebrado em linhas
+
+const fontSize = 16;
+const containerWidth = 500;
+const words = measureWords("Este é um exemplo de texto quebrado em linhas. Ele é longo o suficiente para quebrar em várias linhas.", fontSize);
+const lines = wrapTextIntoLines("Este é um exemplo de texto quebrado em linhas. Ele é longo o suficiente para quebrar em várias linhas.", words, containerWidth, fontSize);
+console.log(lines);
 
 // Elemento principal
 image(
@@ -192,18 +202,24 @@ image(
   }
 );
 
-console.log("Elementos criados, finalizando o layout");
+if (getCurrentContext().debugMode) {
+      console.log("Elementos criados, finalizando o layout");
+    }
 
 // Finalizar o layout e obter comandos de renderização
 const commands = endLayout();
-console.log(
+if (getCurrentContext().debugMode) {
+      console.log(
   `Layout finalizado com ${commands.length} comandos de renderização`
 );
+}
 
 // Renderizar toda a árvore no documento PDF
 renderToPDF(doc);
 
-console.log("Renderização do PDF concluída");
+if (getCurrentContext().debugMode) {
+      console.log("Renderização do PDF concluída");
+    }
 
 // Finalizar o documento
 doc.end();
@@ -217,7 +233,9 @@ doc.on("end", () => {
   const blob = new Blob([pdfBuffer], { type: "application/pdf" });
   pdfUrl = URL.createObjectURL(blob);
 
-  console.log("PDF gerado e disponibilizado em URL");
+  if (getCurrentContext().debugMode) {
+      console.log("PDF gerado e disponibilizado em URL");
+    }
 
   // Exibir o PDF em um iframe
   const iframe = document.createElement("iframe");
@@ -230,6 +248,8 @@ doc.on("end", () => {
   if (container) {
     container.innerHTML = "";
     container.appendChild(iframe);
-    console.log("PDF exibido no iframe");
+    if (getCurrentContext().debugMode) {
+      console.log("PDF exibido no iframe");
+    }
   }
 });

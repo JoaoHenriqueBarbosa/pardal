@@ -46,14 +46,22 @@ export function initialize(
   };
   
   currentContext = context;
-  console.log(`Contexto inicializado com dimensões ${dimensions.width}x${dimensions.height}`);
+  if (getCurrentContext().debugMode) {
+      console.log(`Contexto inicializado com dimensões ${dimensions.width}x${dimensions.height}`);
+    }
   if (debug) {
-    console.log("Modo de depuração ativado");
+    if (getCurrentContext().debugMode) {
+      console.log("Modo de depuração ativado");
+    }
   }
   if (fonts) {
-    console.log("Fontes personalizadas carregadas:", Object.keys(fonts).filter(k => fonts[k as keyof typeof fonts]).join(', '));
+    if (getCurrentContext().debugMode) {
+      console.log("Fontes personalizadas carregadas:", Object.keys(fonts).filter(k => fonts[k as keyof typeof fonts]).join(', '));
+    }
   } else {
-    console.log("Usando fontes padrão");
+    if (getCurrentContext().debugMode) {
+      console.log("Usando fontes padrão");
+    }
   }
   return context;
 }
@@ -68,7 +76,9 @@ export function beginLayout(): void {
   currentContext.renderCommands = [];
   currentContext.openLayoutElementStack = [];
   currentContext.generation++;
-  console.log("Layout iniciado");
+  if (getCurrentContext().debugMode) {
+      console.log("Layout iniciado");
+    }
 }
 
 // Finalizar o layout

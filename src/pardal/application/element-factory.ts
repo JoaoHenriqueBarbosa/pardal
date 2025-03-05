@@ -108,7 +108,9 @@ export function createElement(elementType: ElementType, config: ElementDeclarati
   };
   
   if (currentContext.debugMode) {
-    console.log(`Criando elemento ${element.id} (${elementType}) com childAlignment: x=${finalLayoutConfig.childAlignment.x}, y=${finalLayoutConfig.childAlignment.y}`);
+    if (getCurrentContext().debugMode) {
+      console.log(`Criando elemento ${element.id} (${elementType}) com childAlignment: x=${finalLayoutConfig.childAlignment.x}, y=${finalLayoutConfig.childAlignment.y}`);
+    }
   }
   
   // Adicionar ao contexto

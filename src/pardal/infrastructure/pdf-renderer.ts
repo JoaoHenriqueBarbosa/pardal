@@ -17,12 +17,18 @@ export function renderToPDF(doc: typeof PDFDocument): void {
   
   // Verificar se já temos comandos de renderização
   if (renderCommands.length === 0) {
-    console.log("Nenhum comando de renderização encontrado, executando endLayout");
+    if (getCurrentContext().debugMode) {
+      console.log("Nenhum comando de renderização encontrado, executando endLayout");
+    }
     throw new Error('Nenhum comando de renderização encontrado. Execute endLayout primeiro.');
   }
   
-  console.log("Comandos de renderização:", renderCommands.length);
-  console.log("Elementos:", getCurrentContext().layoutElements.length);
+  if (getCurrentContext().debugMode) {
+      console.log("Comandos de renderização:", renderCommands.length);
+    }
+  if (getCurrentContext().debugMode) {
+      console.log("Elementos:", getCurrentContext().layoutElements.length);
+    }
   
   // Adicionar um retângulo de fundo para depuração apenas se estiver no modo debug
   if (getCurrentContext().debugMode) {
@@ -34,7 +40,9 @@ export function renderToPDF(doc: typeof PDFDocument): void {
   // Ordenar comandos por Z-index
   const sortedCommands = [...renderCommands].sort((a, b) => a.zIndex - b.zIndex);
   
-  console.log("Comandos ordenados:", sortedCommands.length);
+  if (getCurrentContext().debugMode) {
+      console.log("Comandos ordenados:", sortedCommands.length);
+    }
   
   // Aplicar cada comando ao documento PDF
   for (const command of sortedCommands) {
@@ -72,7 +80,9 @@ export function renderToPDF(doc: typeof PDFDocument): void {
   
   // Desenhar bordas nos elementos para depuração como último passo multipass
   if (getCurrentContext().debugMode) {
-    console.log("Desenhando bordas de depuração como último passo do multipass (modo debug ativado)");
+    if (getCurrentContext().debugMode) {
+      console.log("Desenhando bordas de depuração como último passo do multipass (modo debug ativado)");
+    }
 
     // Aplicar bordas de depuração após todas as renderizações normais
     doc.strokeColor('#FF0000')
@@ -141,12 +151,24 @@ function drawImage(
   cornerRadius?: CornerRadius,
   rounded?: boolean
 ): void {
-  console.log("Desenhando imagem:", source);
-  console.log("Dimensões:", { x, y, width, height });
-  console.log("Fit:", fit);
-  console.log("Opacity:", opacity);
-  console.log("Corner Radius:", cornerRadius);
-  console.log("Rounded:", rounded);
+  if (getCurrentContext().debugMode) {
+      console.log("Desenhando imagem:", source);
+    }
+  if (getCurrentContext().debugMode) {
+      console.log("Dimensões:", { x, y, width, height });
+    }
+  if (getCurrentContext().debugMode) {
+      console.log("Fit:", fit);
+    }
+  if (getCurrentContext().debugMode) {
+      console.log("Opacity:", opacity);
+    }
+  if (getCurrentContext().debugMode) {
+      console.log("Corner Radius:", cornerRadius);
+    }
+  if (getCurrentContext().debugMode) {
+      console.log("Rounded:", rounded);
+    }
   
   try {
     // Salvar o estado do documento
@@ -155,7 +177,9 @@ function drawImage(
     // Aplicar clipping se necessário
     if (rounded) {
       // Para formato circular
+      if (getCurrentContext().debugMode) {
       console.log("Aplicando clipping circular");
+    }
       const centerX = x + width / 2;
       const centerY = y + height / 2;
       const radius = Math.min(width, height) / 2;
@@ -164,7 +188,9 @@ function drawImage(
       doc.clip();
     } else if (cornerRadius) {
       // Para cantos arredondados
+      if (getCurrentContext().debugMode) {
       console.log("Aplicando clipping com cantos arredondados");
+    }
       
       // Normalizar cornerRadius se for um número simples
       const cr = typeof cornerRadius === 'number' 
@@ -190,7 +216,9 @@ function drawImage(
       }
     } else {
       // Clipping retangular padrão
+      if (getCurrentContext().debugMode) {
       console.log("Aplicando clipping retangular padrão");
+    }
       doc.rect(x, y, width, height).clip();
     }
     
@@ -236,9 +264,13 @@ function drawImage(
       doc.addContent(`/Gs${opacity} gs`);
     }
     // Desenhar a imagem
-    console.log("Chamando doc.image com:", { source, x, y, options });
+    if (getCurrentContext().debugMode) {
+      console.log("Chamando doc.image com:", { source, x, y, options });
+    }
     doc.image(source, x, y, options);
-    console.log("Imagem desenhada com sucesso");
+    if (getCurrentContext().debugMode) {
+      console.log("Imagem desenhada com sucesso");
+    }
     
     // Restaurar o estado do documento
     doc.restore();
@@ -256,13 +288,19 @@ function drawRectangle(
   backgroundColor: { r: number, g: number, b: number, a: number },
   cornerRadius?: number
 ): void {
-  console.log(`Desenhando retângulo em (${x}, ${y}) com tamanho ${width}x${height}`);
-  console.log(`Cor: rgb(${backgroundColor.r}, ${backgroundColor.g}, ${backgroundColor.b})`);
+  if (getCurrentContext().debugMode) {
+      console.log(`Desenhando retângulo em (${x}, ${y}) com tamanho ${width}x${height}`);
+    }
+  if (getCurrentContext().debugMode) {
+      console.log(`Cor: rgb(${backgroundColor.r}, ${backgroundColor.g}, ${backgroundColor.b})`);
+    }
   
   // Usar formato hexadecimal para compatibilidade
   const hexColor = colorToHex(backgroundColor);
   
-  console.log(`Cor em hex: ${hexColor}`);
+  if (getCurrentContext().debugMode) {
+      console.log(`Cor em hex: ${hexColor}`);
+    }
   
   doc.fillColor(hexColor)
      .fillOpacity(backgroundColor.a / 255);
@@ -285,7 +323,9 @@ function drawCircle(
 ): void {
   const radius = width / 2;
   
-  console.log(`Desenhando círculo em (${x}, ${y}) com raio ${radius}`);
+  if (getCurrentContext().debugMode) {
+      console.log(`Desenhando círculo em (${x}, ${y}) com raio ${radius}`);
+    }
   
   // Usar formato hexadecimal para compatibilidade
   const hexColor = colorToHex(backgroundColor);
@@ -305,8 +345,12 @@ function drawText(
   const { content, color, fontSize } = command.renderData.text;
   const { x, y, width, height } = command.boundingBox;
   
-  console.log(`Desenhando texto em (${x}, ${y}): "${content.map(segment => segment.text).join('')}"`);
-  console.log(`Fonte: ${fontSize}px, Cor: rgb(${color.r}, ${color.g}, ${color.b})`);
+  if (getCurrentContext().debugMode) {
+      console.log(`Desenhando texto em (${x}, ${y}): "${content.map(segment => segment.text).join('')}"`);
+    }
+  if (getCurrentContext().debugMode) {
+      console.log(`Fonte: ${fontSize}px, Cor: rgb(${color.r}, ${color.g}, ${color.b})`);
+    }
   
   // Usar formato hexadecimal para compatibilidade
   const hexColor = colorToHex(color);

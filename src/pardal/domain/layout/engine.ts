@@ -66,7 +66,7 @@ export function getFontForWord(
  * Medir palavras individuais em um texto
  * Reimplementado para seguir mais de perto a abordagem do Clay
  */
-function measureWords(text: string, fontSize: number = 16): MeasuredWord[] {
+export function measureWords(text: string, fontSize: number = 16): MeasuredWord[] {
   if (!text || text.length === 0) {
     return [];
   }
@@ -129,7 +129,7 @@ function measureWords(text: string, fontSize: number = 16): MeasuredWord[] {
  * Quebrar texto em linhas com base nas palavras medidas
  * Seguindo a implementação do Clay
  */
-function wrapTextIntoLines(
+export function wrapTextIntoLines(
   text: string, 
   words: MeasuredWord[], 
   containerWidth: number,
@@ -154,7 +154,9 @@ function wrapTextIntoLines(
       
       // Verificar se a palavra contém um caractere de quebra de linha
       if (word.text.includes('\n')) {
-        console.log("Palavra com quebra de linha:", word.text);
+        if (getCurrentContext().debugMode) {
+      console.log("Palavra com quebra de linha:", word.text);
+    }
         // Dividir a palavra em duas partes: antes e depois do '\n'
         const parts = word.text.split('\n');
         
@@ -278,7 +280,11 @@ function wrapTextIntoLines(
 export function calculateFinalLayout(): void {
   const currentContext = getCurrentContext();
   
-  console.log("Iniciando cálculo de layout final");
+  if (currentContext.debugMode) {
+    if (getCurrentContext().debugMode) {
+      console.log("Iniciando cálculo de layout final");
+    }
+  }
   
   // Limpar o array de comandos de renderização para evitar duplicações
   currentContext.renderCommands = [];
@@ -381,7 +387,11 @@ function processTextWrapping(): void {
         parentElement.minDimensions.height = Math.max(parentElement.minDimensions.height, parentTotalHeight);
       }
       
+      if (currentContext.debugMode) {
+        if (getCurrentContext().debugMode) {
       console.log(`Ajustando altura do elemento de texto ${element.id} para ${totalHeight}px com base em ${wrappedLines.length} linhas de texto`);
+    }
+      }
     }
   }
 }
@@ -410,7 +420,9 @@ function initializeRootElements(): void {
   // Definir dimensões iniciais dos elementos raiz para ocupar todo o espaço
   for (const element of currentContext.layoutElements) {
     if (!currentContext.openLayoutElementStack.includes(element)) {
+      if (getCurrentContext().debugMode) {
       console.log("Definindo dimensões do elemento raiz:", element.id);
+    }
       
       // Elemento raiz - inicializar com dimensões padrão
       if (element.dimensions.width === 0) {
@@ -425,7 +437,9 @@ function initializeRootElements(): void {
           : 100;
       }
       
+      if (getCurrentContext().debugMode) {
       console.log(`Dimensões após inicialização: ${element.dimensions.width}x${element.dimensions.height}`);
+    }
     }
   }
 }
@@ -539,7 +553,9 @@ function calculateElementFitSize(element: LayoutElement): void {
       };
     }
     
-    console.log(`Elemento de texto ${element.id}: dimensões calculadas: ${element.dimensions.width}x${element.dimensions.height}`);
+    if (getCurrentContext().debugMode) {
+      console.log(`Elemento de texto ${element.id}: dimensões calculadas: ${element.dimensions.width}x${element.dimensions.height}`);
+    }
     
     // Aplicar restrições de min/max para FIT
     applyFitSizingConstraints(element);
@@ -575,7 +591,9 @@ function calculateElementFitSize(element: LayoutElement): void {
   );
   
   if (needsChildDimensionsRecalculation) {
-    console.log(`Recalculando dimensões dos filhos para o elemento ${element.id}`);
+    if (getCurrentContext().debugMode) {
+      console.log(`Recalculando dimensões dos filhos para o elemento ${element.id}`);
+    }
     for (const child of element.children) {
       if (!child.minDimensions) {
         calculateElementFitSize(child);
@@ -650,7 +668,9 @@ function calculateElementFitSize(element: LayoutElement): void {
       totalHeight + totalVerticalPadding
   };
   
-  console.log(`Elemento ${element.id}: minDimensions calculado: ${element.minDimensions.width}x${element.minDimensions.height} (direção: ${isRowLayout ? 'ROW' : 'COLUMN'})`);
+  if (getCurrentContext().debugMode) {
+      console.log(`Elemento ${element.id}: minDimensions calculado: ${element.minDimensions.width}x${element.minDimensions.height} (direção: ${isRowLayout ? 'ROW' : 'COLUMN'})`);
+    }
   
   // Aplicar restrições de min/max para FIT
   applyFitSizingConstraints(element);
@@ -740,12 +760,16 @@ function distributeSpaceToChildren(parent: LayoutElement, isXAxis: boolean): voi
       if (isXAxis) {
         if (parent.dimensions.width < minSize) {
           parent.dimensions.width = minSize;
-          console.log(`Ajustando dimensão width do elemento ${parent.id} para ${minSize} (FIT)`);
+          if (getCurrentContext().debugMode) {
+      console.log(`Ajustando dimensão width do elemento ${parent.id} para ${minSize} (FIT)`);
+    }
         }
       } else {
         if (parent.dimensions.height < minSize) {
           parent.dimensions.height = minSize;
-          console.log(`Ajustando dimensão height do elemento ${parent.id} para ${minSize} (FIT)`);
+          if (getCurrentContext().debugMode) {
+      console.log(`Ajustando dimensão height do elemento ${parent.id} para ${minSize} (FIT)`);
+    }
         }
       }
     }
@@ -885,7 +909,11 @@ function distributeSpaceToChildren(parent: LayoutElement, isXAxis: boolean): voi
 function generateRenderCommands(): void {
   const currentContext = getCurrentContext();
   
-  console.log("Gerando comandos de renderização");
+  if (currentContext.debugMode) {
+    if (getCurrentContext().debugMode) {
+      console.log("Gerando comandos de renderização");
+    }
+  }
   
   // Encontrar os elementos raiz
   const rootElements: LayoutElement[] = [];
@@ -968,8 +996,12 @@ function generateRenderCommands(): void {
       // Caso para imagem
       default:
         if (element.elementType === 'image' && element.imageConfig) {
-          console.log("Processando elemento de imagem:", element.id);
-          console.log("Configuração da imagem:", element.imageConfig);
+          if (getCurrentContext().debugMode) {
+      console.log("Processando elemento de imagem:", element.id);
+    }
+          if (getCurrentContext().debugMode) {
+      console.log("Configuração da imagem:", element.imageConfig);
+    }
           const imageCmd = createImageCommandFromConfig(
             boundingBox,
             {
@@ -981,16 +1013,24 @@ function generateRenderCommands(): void {
             },
             0
           );
-          console.log("Comando de renderização de imagem criado:", imageCmd);
+          if (getCurrentContext().debugMode) {
+      console.log("Comando de renderização de imagem criado:", imageCmd);
+    }
           currentContext.renderCommands.push(imageCmd);
         } else if (element.elementType === 'image') {
-          console.log("ERRO: Elemento de imagem sem imageConfig:", element);
+          if (getCurrentContext().debugMode) {
+      console.log("ERRO: Elemento de imagem sem imageConfig:", element);
+    }
         }
         break;
     }
   }
   
-  console.log(`Total de ${currentContext.renderCommands.length} comandos de renderização gerados`);
+  if (currentContext.debugMode) {
+    if (getCurrentContext().debugMode) {
+      console.log(`Total de ${currentContext.renderCommands.length} comandos de renderização gerados`);
+    }
+  }
 }
 
 /**
@@ -1014,14 +1054,18 @@ function positionElement(element: LayoutElement, position: Vector2): void {
   if (layoutConfig.sizing.height.type === SizingType.FIT && element.minDimensions) {
     if (element.dimensions.height < element.minDimensions.height) {
       element.dimensions.height = element.minDimensions.height;
+      if (getCurrentContext().debugMode) {
       console.log(`Corrigindo altura do elemento ${element.id} para ${element.dimensions.height} (calculado como minDimensions)`);
+    }
     }
   }
   
   if (layoutConfig.sizing.width.type === SizingType.FIT && element.minDimensions) {
     if (element.dimensions.width < element.minDimensions.width) {
       element.dimensions.width = element.minDimensions.width;
+      if (getCurrentContext().debugMode) {
       console.log(`Corrigindo largura do elemento ${element.id} para ${element.dimensions.width} (calculado como minDimensions)`);
+    }
     }
   }
   
@@ -1037,19 +1081,25 @@ function positionElement(element: LayoutElement, position: Vector2): void {
     height: height
   };
   
-  console.log(`Posicionando elemento ${element.id} em (${position.x}, ${position.y}) com tamanho ${width}x${height}`);
+  if (getCurrentContext().debugMode) {
+      console.log(`Posicionando elemento ${element.id} em (${position.x}, ${position.y}) com tamanho ${width}x${height}`);
+    }
   
   // Gerar comando de renderização para este elemento
   if (element.elementType === 'rectangle') {
     currentContext.renderCommands.push(
       createRectangleCommand(boundingBox, element.backgroundColor, element.cornerRadius, 0)
     );
-    console.log(`  Adicionando comando RECTANGLE para elemento ${element.id}`);
+    if (getCurrentContext().debugMode) {
+      console.log(`  Adicionando comando RECTANGLE para elemento ${element.id}`);
+    }
   } else if (element.elementType === 'circle') {
     currentContext.renderCommands.push(
       createCircleCommand(boundingBox, element.backgroundColor, 0)
     );
-    console.log(`  Adicionando comando CIRCLE para elemento ${element.id}`);
+    if (getCurrentContext().debugMode) {
+      console.log(`  Adicionando comando CIRCLE para elemento ${element.id}`);
+    }
   } else if (element.elementType === 'image' && element.imageConfig) {
     // Processar elemento de imagem
     currentContext.renderCommands.push(
@@ -1065,7 +1115,9 @@ function positionElement(element: LayoutElement, position: Vector2): void {
         0
       )
     );
-    console.log(`  Adicionando comando IMAGE para elemento ${element.id}`);
+    if (getCurrentContext().debugMode) {
+      console.log(`  Adicionando comando IMAGE para elemento ${element.id}`);
+    }
   } else if (element.elementType === 'text' && element.textConfig) {
     // Processar elemento de texto
     const color = typeof element.textConfig.color === 'string' 
@@ -1078,7 +1130,9 @@ function positionElement(element: LayoutElement, position: Vector2): void {
     
     // Se não temos linhas de texto quebradas, precisamos calculá-las agora
     if (!element.wrappedTextLines || element.wrappedTextLines.length === 0) {
+      if (getCurrentContext().debugMode) {
       console.log(`Linhas quebradas não foram pré-calculadas para ${element.id}, calculando agora...`);
+    }
       
       // Se não temos palavras medidas, medimos agora
       if (!element.measuredWords) {
@@ -1108,7 +1162,9 @@ function positionElement(element: LayoutElement, position: Vector2): void {
       // Importante: Certificar que o bounding box use a altura correta
       boundingBox.height = element.dimensions.height;
       
+      if (getCurrentContext().debugMode) {
       console.log(`Ajustando altura do elemento de texto ${element.id} para ${totalHeight}px com base em ${element.wrappedTextLines.length} linhas de texto`);
+    }
     } else {
       // Mesmo se as linhas já foram calculadas, ainda atualizamos o boundingBox
       // para garantir consistência
@@ -1179,14 +1235,18 @@ function positionElement(element: LayoutElement, position: Vector2): void {
         yOffset += line.dimensions.height;
       }
       
+      if (getCurrentContext().debugMode) {
       console.log(`  Adicionados ${element.wrappedTextLines.length} comandos TEXT para linhas do elemento ${element.id}`);
+    }
     } else {
       // Fallback para texto sem linhas quebradas (não deve acontecer normalmente)
       console.warn(`  Elemento de texto ${element.id} não possui linhas quebradas!`);
       
       // Garantir que as dimensões do texto estejam corretas
       if (boundingBox.width <= 0 || boundingBox.height <= 0) {
-        console.log(`Detectadas dimensões inválidas para texto, recalculando...`);
+        if (getCurrentContext().debugMode) {
+      console.log(`Detectadas dimensões inválidas para texto, recalculando...`);
+    }
         const { width, height } = measureTextDimensions(
           element.textConfig.content,
           fontSize
@@ -1200,7 +1260,9 @@ function positionElement(element: LayoutElement, position: Vector2): void {
         element.dimensions.width = Math.max(element.dimensions.width, width);
         element.dimensions.height = Math.max(element.dimensions.height, height);
         
-        console.log(`Dimensões de texto recalculadas: ${boundingBox.width}x${boundingBox.height}`);
+        if (getCurrentContext().debugMode) {
+      console.log(`Dimensões de texto recalculadas: ${boundingBox.width}x${boundingBox.height}`);
+    }
       }
       
       currentContext.renderCommands.push(
@@ -1217,7 +1279,9 @@ function positionElement(element: LayoutElement, position: Vector2): void {
           0
         )
       );
+      if (getCurrentContext().debugMode) {
       console.log(`  Adicionando comando TEXT para elemento ${element.id}`);
+    }
     }
   }
   
@@ -1226,7 +1290,9 @@ function positionElement(element: LayoutElement, position: Vector2): void {
     return;
   }
   
-  console.log(`  Processando ${element.children.length} filhos do elemento ${element.id}`);
+  if (getCurrentContext().debugMode) {
+      console.log(`  Processando ${element.children.length} filhos do elemento ${element.id}`);
+    }
   
   // Determinar posição inicial para os filhos
   let childStartX = position.x + layoutConfig.padding.left;
