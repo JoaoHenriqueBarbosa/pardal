@@ -8,12 +8,13 @@ import { PDFDocument } from "../domain/model/pdfkit";
 import Pardal from "../..";
 import { PardalContext } from "..";
 import { Buffer } from "buffer";
+import { isEmoji, renderEmoji } from "../domain/utils/emoji";
 
 /**
  * Renderiza a árvore de comandos para um documento PDF
  * @returns ArrayBuffer contendo os bytes do PDF
  */
-export function renderToPDF(pardal: Pardal): Promise<ArrayBuffer> {
+export async function renderToPDF(pardal: Pardal): Promise<ArrayBuffer> {
   const currentContext = pardal.getContext();
 
   // Usar factory do contexto em vez de criar instância diretamente
@@ -45,19 +46,22 @@ export function renderToPDF(pardal: Pardal): Promise<ArrayBuffer> {
     );
   }
   if (currentContext.debugMode) {
-    currentContext.logger.debug("Elementos:", currentContext.layoutElements.length);
+    currentContext.logger.debug(
+      "Elementos:",
+      currentContext.layoutElements.length
+    );
   }
 
   // Agrupar comandos por pageId
   const commandsByPage = new Map<number, RenderCommand[]>();
-  
+
   for (const command of currentContext.renderCommands) {
     if (!commandsByPage.has(command.pageId)) {
       commandsByPage.set(command.pageId, []);
     }
     commandsByPage.get(command.pageId)?.push(command);
   }
-  
+
   if (currentContext.debugMode) {
     currentContext.logger.debug(`Número de páginas: ${commandsByPage.size}`);
   }
@@ -87,7 +91,9 @@ export function renderToPDF(pardal: Pardal): Promise<ArrayBuffer> {
     );
 
     if (currentContext.debugMode) {
-      currentContext.logger.debug(`Comandos para página ${pageId}: ${sortedCommands.length}`);
+      currentContext.logger.debug(
+        `Comandos para página ${pageId}: ${sortedCommands.length}`
+      );
     }
 
     // Adicionar um retângulo de fundo para depuração apenas se estiver no modo debug
@@ -134,7 +140,7 @@ export function renderToPDF(pardal: Pardal): Promise<ArrayBuffer> {
 
         case RenderCommandType.TEXT:
           if (command.renderData.text) {
-            drawText(currentContext, doc, command);
+            await drawText(currentContext, doc, command);
           }
           break;
 
@@ -266,7 +272,7 @@ function drawImage(
   rounded?: boolean
 ): void {
   if (context.debugMode) {
-    context.logger.debug("Desenhando imagem:", source);
+    context.logger.debug("Desenhando imagem");
   }
   if (context.debugMode) {
     context.logger.debug("Dimensões:", { x, y, width, height });
@@ -385,7 +391,7 @@ function drawImage(
     }
     // Desenhar a imagem
     if (context.debugMode) {
-      context.logger.debug("Chamando doc.image com:", { source, x, y, options });
+      context.logger.debug("Chamando doc.image com:", { x, y });
     }
     doc.image(source, x, y, options);
     if (context.debugMode) {
@@ -395,7 +401,7 @@ function drawImage(
     // Restaurar o estado do documento
     doc.restore();
   } catch (error) {
-    context.logger.error(`Erro ao renderizar imagem (${source}):`, error);
+    context.logger.error(`Erro ao renderizar imagem:`, error);
   }
 }
 
@@ -449,7 +455,9 @@ function drawCircle(
   const radius = width / 2;
 
   if (context.debugMode) {
-    context.logger.debug(`Desenhando círculo em (${x}, ${y}) com raio ${radius}`);
+    context.logger.debug(
+      `Desenhando círculo em (${x}, ${y}) com raio ${radius}`
+    );
   }
 
   // Usar formato hexadecimal para compatibilidade
@@ -462,11 +470,77 @@ function drawCircle(
     .fill();
 }
 
-function drawText(
+// Helper function to handle emoji rendering
+async function handleEmojiRendering(
+  context: PardalContext,
+  doc: PDFDocument,
+  text: string,
+  x: number,
+  y: number,
+  fontSize: number | undefined,
+  font: string
+): Promise<{widthOfEmoji: number, rendered: boolean}> {
+  if (!isEmoji(text)) {
+    return { widthOfEmoji: 0, rendered: false };
+  }
+  
+  const widthOfEmoji = doc
+    .font(font)
+    .fontSize(fontSize || 16)
+    .widthOfString(text);
+    
+  // Verificar se devemos usar imagens para emojis
+  if (context.debugMode) {
+    context.logger.debug(`handleEmojiRendering: useImageForEmojis = ${context.useImageForEmojis}, emoji = ${text}`);
+  }
+  
+  if (context.useImageForEmojis === false) {
+    if (context.debugMode) {
+      context.logger.debug(`Pulando renderização de emoji como imagem devido a useImageForEmojis = false`);
+    }
+    return { widthOfEmoji, rendered: false };
+  }
+    
+  // Aplicar offsets para posicionamento
+  const offsetX = widthOfEmoji / 8;
+  const offsetY = widthOfEmoji / 8;
+
+  // Renderizar emoji usando função específica
+  const renderSuccess = await renderEmoji(
+    doc,
+    {
+      emoji: text,
+      x: x + offsetX,
+      y: y + offsetY,
+    },
+    widthOfEmoji
+  );
+  
+  // Se não renderizou com sucesso, não consideramos como "rendered"
+  // para que o texto original seja mostrado
+  return { widthOfEmoji, rendered: renderSuccess };
+}
+
+// Helper function to configure font and text appearance
+function configureTextAppearance(
+  doc: PDFDocument,
+  fontFamily: string,
+  fontSize: number | undefined,
+  hexColor: string,
+  opacity: number
+): void {
+  doc
+    .font(fontFamily)
+    .fontSize(fontSize || 16)
+    .fillColor(hexColor)
+    .fillOpacity(opacity);
+}
+
+async function drawText(
   context: PardalContext,
   doc: PDFDocument,
   command: RenderCommand
-): void {
+): Promise<void> {
   if (!command.renderData.text) return;
 
   const { content, color, fontSize } = command.renderData.text;
@@ -478,8 +552,6 @@ function drawText(
         .map((segment) => segment.text)
         .join("")}"`
     );
-  }
-  if (context.debugMode) {
     context.logger.debug(
       `Fonte: ${fontSize}px, Cor: rgb(${color.r}, ${color.g}, ${color.b})`
     );
@@ -488,35 +560,40 @@ function drawText(
   // Usar formato hexadecimal para compatibilidade
   const hexColor = colorToHex(color);
 
+  if (content.length === 0) return;
+
   // Se não houver segmentos com formatação, renderize normalmente
-  if (content.length <= 1) {
-    // Determinação da fonte padrão
-    let fontFamily = DEFAULT_FONTS.regular || "Helvetica";
-    if (context.fonts) {
-      fontFamily =
-        context.fonts.regular || DEFAULT_FONTS.regular || "Helvetica";
-    }
-
-    // Configurar fonte para renderização
-    doc
-      .font(fontFamily)
-      .fontSize(fontSize || 16)
-      .fillColor(hexColor)
-      .fillOpacity(color.a / 255);
-
+  if (content.length === 1) {
+    const text = content[0].text;
+    const fontFamily = getFontForWord(content[0], context.fonts || DEFAULT_FONTS) || "Helvetica";
+    
+    // Verificar se é um emoji
+    const { rendered, widthOfEmoji } = await handleEmojiRendering(
+      context, 
+      doc, 
+      text, 
+      x, 
+      y, 
+      fontSize,
+      context.fonts?.emoji || fontFamily
+    );
+    
+    // Configurar aparência do texto
+    configureTextAppearance(doc, fontFamily, fontSize, hexColor, rendered ? 0 : color.a / 255);
+    
     // Calcular o ajuste de baseline para centralização vertical
     const baselineAdjustment = (height - doc.currentLineHeight()) / 2;
 
-    doc.text(
-      content.map((segment) => segment.text).join(" "),
-      x,
-      y + baselineAdjustment,
-      {
-        width: width,
-        height: height,
-        align: "left",
-      }
-    );
+    // Renderizar o texto
+    doc.text(text, x, y + baselineAdjustment, {
+      width: width,
+      height: height,
+      align: "left",
+    });
+
+    if (rendered) {
+      doc.fillOpacity(1);
+    }
   } else {
     // Posição inicial para renderização
     let currentY = y;
@@ -534,8 +611,7 @@ function drawText(
     // Medir e organizar segmentos em linhas
     for (const segment of content) {
       // Determinar a fonte baseada no estilo
-      const fontFamily =
-        getFontForWord(segment, context.fonts || DEFAULT_FONTS) || "Helvetica";
+      const fontFamily = getFontForWord(segment, context.fonts || DEFAULT_FONTS) || "Helvetica";
 
       // Medir o texto com a fonte correta
       doc.font(fontFamily).fontSize(fontSize || 16);
@@ -577,12 +653,29 @@ function drawText(
           segIndex === line.segments.length - 1;
         const isFirstSegmentInFirstLine = lineIndex === 0 && segIndex === 0;
 
-        // Configurar fonte e cor
-        doc
-          .font(segment.font)
-          .fontSize(fontSize || 16)
-          .fillColor(hexColor)
-          .fillOpacity(color.a / 255);
+        const segmentFont = isEmoji(segment.text)
+          ? context.fonts?.emoji
+          : segment.font;
+
+        if (!segmentFont) {
+          throw new Error(
+            `Fonte não encontrada para o segmento: ${segment.text}`
+          );
+        }
+
+        // Verificar se é um emoji
+        const { rendered } = await handleEmojiRendering(
+          context, 
+          doc, 
+          segment.text, 
+          xPos, 
+          line.y + baselineAdjustment, 
+          fontSize,
+          segmentFont
+        );
+        
+        // Configurar aparência do texto
+        configureTextAppearance(doc, segmentFont, fontSize, hexColor, rendered ? 0 : color.a / 255);
 
         if (isFirstSegmentInFirstLine) {
           doc.text(segment.text, xPos, line.y + baselineAdjustment, {
@@ -594,7 +687,10 @@ function drawText(
             continued: !isLastSegmentInLastLine,
             lineGap: 0,
           });
-          // Renderizar o segmento na posição correta com ajuste de baseline
+        }
+
+        if (rendered) {
+          doc.fillOpacity(1);
         }
 
         // Avançar a posição manual e explicitamente apenas se não for o último segmento

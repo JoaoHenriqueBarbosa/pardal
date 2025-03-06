@@ -148,6 +148,7 @@ export interface FontOptions {
   thinItalic?: string;
   regularItalic?: string;
   boldItalic?: string;
+  emoji?: string;
 }
 
 // Valores padrão

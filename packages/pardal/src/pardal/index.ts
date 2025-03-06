@@ -51,6 +51,7 @@ export interface PardalContext {
   logger: Logger;
   pages: Page[];
   currentPageId: number;
+  useImageForEmojis: boolean;
 }
 
 export default class Pardal {
@@ -72,6 +73,7 @@ export default class Pardal {
       logger: new ConsoleLogger(),
       pages: [],
       currentPageId: 0,
+      useImageForEmojis: false,
     };
   }
 
@@ -83,6 +85,7 @@ export default class Pardal {
       pdfKitFactory?: PDFKitFactory;
       logger?: Logger;
       logLevel?: LogLevel;
+      useImageForEmojis?: boolean;
     },
     childrenFn: (pardal: Pardal) => void
   ): Promise<ArrayBuffer> {
@@ -90,7 +93,8 @@ export default class Pardal {
     pardal.context.layoutDimensions = options.dimensions;
     pardal.context.debugMode = options.debugMode || false;
     pardal.context.fonts = options.fonts || DEFAULT_FONTS;
-
+    pardal.context.useImageForEmojis = options.useImageForEmojis !== undefined ? options.useImageForEmojis : true;
+    
     // Usar factory e logger injetados, se disponíveis
     if (options.pdfKitFactory) {
       pardal.context.pdfKitFactory = options.pdfKitFactory;

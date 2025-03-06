@@ -11,7 +11,7 @@ import { MeasuredWord } from '../model/element';
  * @param text Texto com formatação Markdown
  * @returns Array de segmentos de texto com suas propriedades de estilo, onde cada palavra é um segmento separado
  */
-export function parseMarkdownText(text: string): Partial<MeasuredWord>[] {
+export function parseText(text: string): Partial<MeasuredWord>[] {
   if (!text) return [];
   
   // Se não há marcadores, retornar texto dividido em palavras
@@ -111,6 +111,7 @@ function cleanSegments(segments: Partial<MeasuredWord>[]): Partial<MeasuredWord>
     }
   }
   
+  console.log(JSON.stringify(wordSegments, null, 2));
   return wordSegments;
 }
 

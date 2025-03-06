@@ -19,8 +19,9 @@ import {
   createImageCommandFromConfig,
 } from "../rendering/commands";
 import { parseColor } from "../utils/color";
-import { parseMarkdownText } from "../utils/markdown";
+import { parseText } from "../utils/text";
 import Pardal, { PardalContext } from "../..";
+import { isEmoji } from "../utils/emoji";
 
 /**
  * Medir dimensões de texto usando PDFKit
@@ -66,6 +67,12 @@ export function getFontForWord(
   word: Partial<MeasuredWord>,
   fonts: FontOptions | undefined
 ): string {
+  if (!word.text) {
+    return fonts?.regular || "Helvetica";
+  }
+  if (isEmoji(word.text) && fonts?.emoji) {
+    return fonts?.emoji || "NotoEmoji-Regular";
+  }
   if (word.bold && word.italic) {
     return (
       fonts?.boldItalic || fonts?.bold || fonts?.regular || "Helvetica-Bold"
@@ -100,7 +107,7 @@ export function measureWords(
 
     const words: MeasuredWord[] = [];
 
-    const wordsToProcess = parseMarkdownText(text);
+    const wordsToProcess = parseText(text);
 
     for (let i = 0; i < wordsToProcess.length; i++) {
       const word = wordsToProcess[i];
@@ -1107,9 +1114,6 @@ function generateRenderCommands(pardal: Pardal): void {
           if (currentContext.debugMode) {
             currentContext.logger.debug("Processando elemento de imagem:", element.id);
           }
-          if (currentContext.debugMode) {
-            currentContext.logger.debug("Configuração da imagem:", element.imageConfig);
-          }
           const imageCmd = createImageCommandFromConfig(
             element.pageId,
             boundingBox,
@@ -1126,12 +1130,12 @@ function generateRenderCommands(pardal: Pardal): void {
             0
           );
           if (currentContext.debugMode) {
-            currentContext.logger.debug("Comando de renderização de imagem criado:", imageCmd);
+            currentContext.logger.debug("Comando de renderização de imagem criado:", element.id);
           }
           pardal.addRenderCommand(imageCmd);
         } else if (element.elementType === "image") {
           if (currentContext.debugMode) {
-            currentContext.logger.debug("ERRO: Elemento de imagem sem imageConfig:", element);
+            currentContext.logger.debug("ERRO: Elemento de imagem sem imageConfig:", element.id);
           }
         }
         break;
