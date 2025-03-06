@@ -15,6 +15,7 @@
     "build:web": "bun run --cwd packages/web-demo build",
     "build:server": "bun run --cwd packages/server-demo build",
     "build": "bun run build:lib && bun run build:web && bun run build:server",
+    "publish": "cd packages/pardal && npm publish",
     "test": "bun run --cwd packages/pardal test"
   },
   "devDependencies": {

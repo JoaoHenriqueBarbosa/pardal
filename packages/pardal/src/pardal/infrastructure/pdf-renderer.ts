@@ -568,7 +568,7 @@ async function drawText(
     const fontFamily = getFontForWord(content[0], context.fonts || DEFAULT_FONTS) || "Helvetica";
     
     // Verificar se é um emoji
-    const { rendered, widthOfEmoji } = await handleEmojiRendering(
+    const { rendered } = await handleEmojiRendering(
       context, 
       doc, 
       text, 
