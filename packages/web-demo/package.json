@@ -9,10 +9,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "pardal": "workspace:*"
+    "pardal": "workspace:*",
+    "pdfkit": "^0.16.0",
+    "vite-plugin-fs": "^1.1.0"
   },
   "devDependencies": {
     "typescript": "~5.7.2",
     "vite": "^6.2.0"
   }
-} 
+}

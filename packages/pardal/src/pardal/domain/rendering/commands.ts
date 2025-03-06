@@ -13,6 +13,7 @@ export enum RenderCommandType {
 
 // Comando de renderização
 export interface RenderCommand {
+  pageId: number;
   boundingBox: BoundingBox;
   renderData: {
     rectangle?: {
@@ -44,12 +45,14 @@ export interface RenderCommand {
 
 // Utilitários para criar comandos de renderização
 export function createRectangleCommand(
+  pageId: number,
   boundingBox: BoundingBox, 
   backgroundColor: Color, 
   cornerRadius?: CornerRadius, 
   zIndex: number = 0
 ): RenderCommand {
   return {
+    pageId,
     boundingBox,
     renderData: {
       rectangle: {
@@ -63,11 +66,13 @@ export function createRectangleCommand(
 }
 
 export function createCircleCommand(
+  pageId: number,
   boundingBox: BoundingBox, 
   backgroundColor: Color, 
   zIndex: number = 0
 ): RenderCommand {
   return {
+    pageId,
     boundingBox,
     renderData: {
       circle: {
@@ -80,6 +85,7 @@ export function createCircleCommand(
 }
 
 export function createTextCommand(
+  pageId: number,
   boundingBox: BoundingBox,
   content: MeasuredWord[],
   color: Color,
@@ -92,6 +98,7 @@ export function createTextCommand(
   zIndex: number = 0
 ): RenderCommand {
   return {
+    pageId,
     boundingBox,
     renderData: {
       text: {
@@ -110,6 +117,7 @@ export function createTextCommand(
 
 // Sobrecarga que aceita diretamente um TextElementConfig
 export function createTextCommandFromConfig(
+  pageId: number,
   boundingBox: BoundingBox,
   textConfig: {
     content: MeasuredWord[],
@@ -122,6 +130,7 @@ export function createTextCommandFromConfig(
   zIndex: number = 0
 ): RenderCommand {
   return {
+    pageId,
     boundingBox,
     renderData: {
       text: {
@@ -142,6 +151,7 @@ export function createTextCommandFromConfig(
  * Cria um comando de renderização de imagem
  */
 export function createImageCommand(
+  pageId: number,
   boundingBox: BoundingBox,
   source: string,
   options: {
@@ -153,6 +163,7 @@ export function createImageCommand(
   zIndex: number = 0
 ): RenderCommand {
   return {
+    pageId,
     boundingBox,
     renderData: {
       image: {
@@ -172,6 +183,7 @@ export function createImageCommand(
  * Cria um comando de renderização de imagem a partir de uma configuração
  */
 export function createImageCommandFromConfig(
+  pageId: number,
   boundingBox: BoundingBox,
   imageConfig: {
     source: string,
@@ -183,6 +195,7 @@ export function createImageCommandFromConfig(
   zIndex: number = 0
 ): RenderCommand {
   return createImageCommand(
+    pageId,
     boundingBox,
     imageConfig.source,
     {

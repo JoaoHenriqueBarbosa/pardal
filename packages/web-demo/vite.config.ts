@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
+import fs from 'vite-plugin-fs'
 
 export default defineConfig({
   server: {
@@ -12,7 +13,11 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      'pardal': resolve(__dirname, '../pardal/src')
+      'pardal': resolve(__dirname, '../pardal/src'),
+      'fs': 'vite-plugin-fs/browser'
     }
-  }
+  },
+  plugins: [
+    fs()
+  ]
 }); 

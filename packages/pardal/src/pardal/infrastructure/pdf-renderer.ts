@@ -1,6 +1,6 @@
 import { RenderCommandType } from "../domain/rendering/commands";
 import { colorToHex } from "../domain/utils/color";
-import { FontOptions, DEFAULT_FONTS } from "../domain/model/types";
+import { DEFAULT_FONTS } from "../domain/model/types";
 import { getFontForWord } from "../domain/layout/engine";
 import { CornerRadius } from "../domain/model/types";
 import { RenderCommand } from "../domain/rendering/commands";
@@ -23,6 +23,7 @@ export function renderToPDF(pardal: Pardal): Promise<ArrayBuffer> {
       currentContext.layoutDimensions.width,
       currentContext.layoutDimensions.height,
     ],
+    autoFirstPage: false, // Não crie a primeira página automaticamente
   });
 
   // Verificar se já temos comandos de renderização
@@ -47,137 +48,171 @@ export function renderToPDF(pardal: Pardal): Promise<ArrayBuffer> {
     currentContext.logger.debug("Elementos:", currentContext.layoutElements.length);
   }
 
-  // Adicionar um retângulo de fundo para depuração apenas se estiver no modo debug
+  // Agrupar comandos por pageId
+  const commandsByPage = new Map<number, RenderCommand[]>();
+  
+  for (const command of currentContext.renderCommands) {
+    if (!commandsByPage.has(command.pageId)) {
+      commandsByPage.set(command.pageId, []);
+    }
+    commandsByPage.get(command.pageId)?.push(command);
+  }
+  
   if (currentContext.debugMode) {
-    doc
-      .rect(
-        0,
-        0,
+    currentContext.logger.debug(`Número de páginas: ${commandsByPage.size}`);
+  }
+
+  // Ordenar pageIds para renderização em ordem
+  const pageIds = Array.from(commandsByPage.keys()).sort((a, b) => a - b);
+
+  // Renderizar cada página
+  for (const pageId of pageIds) {
+    // Adicionar nova página ao documento
+    doc.addPage({
+      size: [
         currentContext.layoutDimensions.width,
-        currentContext.layoutDimensions.height
-      )
-      .fillColor("#EEEEEE")
-      .fill();
-  }
+        currentContext.layoutDimensions.height,
+      ],
+      margins: { top: 0, left: 0, bottom: 0, right: 0 },
+    });
 
-  // Ordenar comandos por Z-index
-  const sortedCommands = [...currentContext.renderCommands].sort(
-    (a, b) => a.zIndex - b.zIndex
-  );
-
-  if (currentContext.debugMode) {
-    currentContext.logger.debug("Comandos ordenados:", sortedCommands.length);
-  }
-
-  // Aplicar cada comando ao documento PDF
-  for (const command of sortedCommands) {
-    const { x, y, width, height } = command.boundingBox;
-
-    switch (command.commandType) {
-      case RenderCommandType.RECTANGLE:
-        if (command.renderData.rectangle) {
-          const { backgroundColor, cornerRadius } =
-            command.renderData.rectangle;
-          drawRectangle(
-            currentContext,
-            doc,
-            x,
-            y,
-            width,
-            height,
-            backgroundColor,
-            cornerRadius
-          );
-        }
-        break;
-
-      case RenderCommandType.CIRCLE:
-        if (command.renderData.circle) {
-          const { backgroundColor } = command.renderData.circle;
-          drawCircle(currentContext, doc, x, y, width, backgroundColor);
-        }
-        break;
-
-      case RenderCommandType.TEXT:
-        if (command.renderData.text) {
-          drawText(currentContext, doc, command);
-        }
-        break;
-
-      case RenderCommandType.IMAGE:
-        if (command.renderData.image) {
-          const { source, fit, opacity, cornerRadius, rounded } =
-            command.renderData.image;
-          drawImage(
-            currentContext,
-            doc,
-            x,
-            y,
-            width,
-            height,
-            source,
-            fit,
-            opacity,
-            cornerRadius,
-            rounded
-          );
-        }
-        break;
-    }
-  }
-
-  // Desenhar bordas nos elementos para depuração como último passo multipass
-  if (currentContext.debugMode) {
     if (currentContext.debugMode) {
-      currentContext.logger.debug(
-        "Desenhando bordas de depuração como último passo do multipass (modo debug ativado)"
-      );
+      currentContext.logger.debug(`Renderizando página ${pageId}`);
     }
 
-    // Aplicar bordas de depuração após todas as renderizações normais
-    doc.strokeColor("#FF0000").lineWidth(1);
+    // Comandos para esta página, ordenados por Z-index
+    const pageCommands = commandsByPage.get(pageId) || [];
+    const sortedCommands = [...pageCommands].sort(
+      (a, b) => a.zIndex - b.zIndex
+    );
 
-    // Iterar pelos comandos ordenados do mais externo para o mais interno
-    // para garantir que os aninhados fiquem por cima visualmente
-    for (const command of [...sortedCommands].reverse()) {
+    if (currentContext.debugMode) {
+      currentContext.logger.debug(`Comandos para página ${pageId}: ${sortedCommands.length}`);
+    }
+
+    // Adicionar um retângulo de fundo para depuração apenas se estiver no modo debug
+    if (currentContext.debugMode) {
+      doc
+        .rect(
+          0,
+          0,
+          currentContext.layoutDimensions.width,
+          currentContext.layoutDimensions.height
+        )
+        .fillColor("#EEEEEE")
+        .fill();
+    }
+
+    // Aplicar cada comando ao documento PDF
+    for (const command of sortedCommands) {
       const { x, y, width, height } = command.boundingBox;
 
-      // Verificação adicional para garantir integridade das dimensões
-      if (width <= 0 || height <= 0) {
-        currentContext.logger.warn(
-          `Ignorando retângulo de debug com dimensões inválidas: ${width}x${height}`
+      switch (command.commandType) {
+        case RenderCommandType.RECTANGLE:
+          if (command.renderData.rectangle) {
+            const { backgroundColor, cornerRadius } =
+              command.renderData.rectangle;
+            drawRectangle(
+              currentContext,
+              doc,
+              x,
+              y,
+              width,
+              height,
+              backgroundColor,
+              cornerRadius
+            );
+          }
+          break;
+
+        case RenderCommandType.CIRCLE:
+          if (command.renderData.circle) {
+            const { backgroundColor } = command.renderData.circle;
+            drawCircle(currentContext, doc, x, y, width, backgroundColor);
+          }
+          break;
+
+        case RenderCommandType.TEXT:
+          if (command.renderData.text) {
+            drawText(currentContext, doc, command);
+          }
+          break;
+
+        case RenderCommandType.IMAGE:
+          if (command.renderData.image) {
+            const { source, fit, opacity, cornerRadius, rounded } =
+              command.renderData.image;
+            drawImage(
+              currentContext,
+              doc,
+              x,
+              y,
+              width,
+              height,
+              source,
+              fit,
+              opacity,
+              cornerRadius,
+              rounded
+            );
+          }
+          break;
+      }
+    }
+
+    // Desenhar bordas nos elementos para depuração
+    if (currentContext.debugMode) {
+      if (currentContext.debugMode) {
+        currentContext.logger.debug(
+          "Desenhando bordas de depuração como último passo do multipass (modo debug ativado)"
         );
-        continue;
       }
 
-      // Para elementos muito pequenos, garantir uma borda mínima visível
-      if (width < 2 || height < 2) {
-        currentContext.logger.warn(
-          `Elemento muito pequeno para debug: ${width}x${height}, ajustando visualização`
-        );
+      // Aplicar bordas de depuração após todas as renderizações normais
+      doc.strokeColor("#FF0000").lineWidth(1);
 
-        // Desenhar com uma cor diferente para elementos muito pequenos
-        doc.strokeColor("#0000FF");
-      } else {
-        doc.strokeColor("#FF0000");
-      }
+      // Iterar pelos comandos ordenados do mais externo para o mais interno
+      // para garantir que os aninhados fiquem por cima visualmente
+      for (const command of [...sortedCommands].reverse()) {
+        const { x, y, width, height } = command.boundingBox;
 
-      // Para retângulos com corner radius, desenhe bordas arredondadas também
-      if (
-        command.commandType === RenderCommandType.RECTANGLE &&
-        command.renderData.rectangle?.cornerRadius
-      ) {
-        doc
-          .roundedRect(
-            x,
-            y,
-            width,
-            height,
-            command.renderData.rectangle.cornerRadius
-          )
-          .stroke();
-      } else {
-        doc.rect(x, y, width, height).stroke();
+        // Verificação adicional para garantir integridade das dimensões
+        if (width <= 0 || height <= 0) {
+          currentContext.logger.warn(
+            `Ignorando retângulo de debug com dimensões inválidas: ${width}x${height}`
+          );
+          continue;
+        }
+
+        // Para elementos muito pequenos, garantir uma borda mínima visível
+        if (width < 2 || height < 2) {
+          currentContext.logger.warn(
+            `Elemento muito pequeno para debug: ${width}x${height}, ajustando visualização`
+          );
+
+          // Desenhar com uma cor diferente para elementos muito pequenos
+          doc.strokeColor("#0000FF");
+        } else {
+          doc.strokeColor("#FF0000");
+        }
+
+        // Para retângulos com corner radius, desenhe bordas arredondadas também
+        if (
+          command.commandType === RenderCommandType.RECTANGLE &&
+          command.renderData.rectangle?.cornerRadius
+        ) {
+          doc
+            .roundedRect(
+              x,
+              y,
+              width,
+              height,
+              command.renderData.rectangle.cornerRadius
+            )
+            .stroke();
+        } else {
+          doc.rect(x, y, width, height).stroke();
+        }
       }
     }
   }

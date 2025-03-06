@@ -7,8 +7,9 @@ import { DefaultPDFKitFactory } from "./pardal/domain/model/pdfkit";
 import { ConsoleLogger } from "./pardal/domain/utils/logger";
 import { LogLevel } from "./pardal/domain/utils/logger";
 import { NullLogger } from "./pardal/domain/utils/logger";
+import { TextAlignment } from "./pardal/domain/model/types";
 
-export { Sizing, Alignment, Padding, ImageFitMode };
+export { Sizing, Alignment, Padding, ImageFitMode, TextAlignment };
 
 // Exportações de funções auxiliares
 export { measureWords, wrapTextIntoLines } from "./pardal/domain/layout/engine";

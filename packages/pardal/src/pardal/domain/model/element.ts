@@ -22,6 +22,7 @@ export interface WrappedTextLine {
 // Declaração de configuração de um elemento
 export interface ElementDeclaration {
   id?: string;
+  pageId?: number;
   layout?: Partial<LayoutConfig>;
   backgroundColor?: string | Color;
   cornerRadius?: CornerRadius;
@@ -62,6 +63,7 @@ import { Dimensions } from './types';
 
 export interface LayoutElement {
   id: string;
+  pageId: number;
   children: LayoutElement[];
   dimensions: Dimensions;
   minDimensions: Dimensions;

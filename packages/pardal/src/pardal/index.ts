@@ -16,14 +16,23 @@ import type { Logger } from "./domain/utils/logger";
 import { ConsoleLogger, LogLevel } from "./domain/utils/logger";
 
 // Utility functions
-function ensureId(
+function ensureIdAndPageId(
+  context: PardalContext,
   config: ElementDeclaration,
   prefix: string
 ): ElementDeclaration {
   if (!config.id) {
     config.id = `${prefix}-${Math.random().toString(36).substr(2, 9)}`;
   }
+  if (!config.pageId) {
+    config.pageId = context.currentPageId;
+  }
   return config;
+}
+
+export interface Page {
+  sizes: Dimensions;
+  id: number;
 }
 
 // Contexto do Pardal
@@ -40,6 +49,8 @@ export interface PardalContext {
   fonts?: FontOptions;
   pdfKitFactory: PDFKitFactory;
   logger: Logger;
+  pages: Page[];
+  currentPageId: number;
 }
 
 export default class Pardal {
@@ -59,6 +70,8 @@ export default class Pardal {
       fonts: DEFAULT_FONTS,
       pdfKitFactory: new DefaultPDFKitFactory(),
       logger: new ConsoleLogger(),
+      pages: [],
+      currentPageId: 0,
     };
   }
 
@@ -101,11 +114,24 @@ export default class Pardal {
     return renderToPDF(this);
   }
 
+  page(configOrChildren: {sizes: Dimensions} | ((pardal: Pardal) => void), children?: (pardal: Pardal) => void): void {
+    const pageId = this.context.pages.length + 1;
+    this.context.currentPageId = pageId;
+
+    if ("sizes" in configOrChildren && children) {
+      this.context.pages.push({ id: pageId, sizes: configOrChildren.sizes });
+      children(this);
+    } else if (typeof configOrChildren === "function") {
+      this.context.pages.push({ id: pageId, sizes: this.context.layoutDimensions });
+      configOrChildren(this);
+    }
+  }
+
   element(type: ElementType, config: ElementDeclaration = {}): void {
     if (this.context.debugMode) {
       this.context.logger.debug(`Criando elemento ${type}`);
     }
-    createElement(this, type, ensureId(config, "element"));
+    createElement(this, type, ensureIdAndPageId(this.context, config, "element"));
     endElement(this);
   }
 
@@ -114,7 +140,7 @@ export default class Pardal {
     if (this.context.debugMode) {
       this.context.logger.debug(`Criando retângulo ${config.id || "sem id"}`);
     }
-    this.element("rectangle", ensureId(config, "rect"));
+    this.element("rectangle", ensureIdAndPageId(this.context, config, "rect"));
   }
 
   // Helper para criar um círculo e fechá-lo imediatamente
@@ -122,7 +148,7 @@ export default class Pardal {
     if (this.context.debugMode) {
       this.context.logger.debug(`Criando círculo ${config.id || "sem id"}`);
     }
-    this.element("circle", ensureId(config, "circle"));
+    this.element("circle", ensureIdAndPageId(this.context, config, "circle"));
   }
 
   // Helper para criar um elemento de texto e fechá-lo imediatamente
@@ -141,7 +167,7 @@ export default class Pardal {
       text: content,
     };
 
-    this.element("text", ensureId(processedConfig, "text"));
+    this.element("text", ensureIdAndPageId(this.context, processedConfig, "text"));
   }
 
   // Helper para criar um elemento com filho(s) usando uma função de callback
@@ -153,7 +179,7 @@ export default class Pardal {
     if (this.context.debugMode) {
       this.context.logger.debug(`Abrindo elemento ${type} com filhos`);
     }
-    createElement(this, type, ensureId(config, type));
+    createElement(this, type, ensureIdAndPageId(this.context, config, type));
     children();
     endElement(this);
     if (this.context.debugMode) {
@@ -163,7 +189,7 @@ export default class Pardal {
 
   // Helper para criar um retângulo com filho(s)
   withRect(config: ElementDeclaration, children: () => void): void {
-    this.withChildren("rectangle", ensureId(config, "rect"), children);
+    this.withChildren("rectangle", ensureIdAndPageId(this.context, config, "rect"), children);
   }
 
   // Helper de grupo para organizar elementos
@@ -171,7 +197,7 @@ export default class Pardal {
     config: ElementDeclaration = { fillColor: "transparent" },
     children: () => void
   ): void {
-    this.withRect(ensureId(config, "group"), children);
+    this.withRect(ensureIdAndPageId(this.context, config, "group"), children);
   }
 
   // Helper de linha (grupo horizontal)
@@ -180,7 +206,7 @@ export default class Pardal {
     children: () => void
   ): void {
     this.withRect(
-      ensureId(
+      ensureIdAndPageId(this.context,
         {
           ...config,
           direction: Direction.ROW,
@@ -197,7 +223,7 @@ export default class Pardal {
     children: () => void
   ): void {
     this.withRect(
-      ensureId(
+      ensureIdAndPageId(this.context,
         {
           ...config,
           direction: Direction.COLUMN,
@@ -219,7 +245,7 @@ export default class Pardal {
       source: source,
     };
 
-    this.withChildren("image", ensureId(processedConfig, "image"), children);
+    this.withChildren("image", ensureIdAndPageId(this.context, processedConfig, "image"), children);
   }
 
   // Helper para criar um elemento de imagem e fechá-lo imediatamente ou com filhos
@@ -240,9 +266,9 @@ export default class Pardal {
     };
 
     if (children) {
-      this.withChildren("image", ensureId(processedConfig, "image"), children);
+      this.withChildren("image", ensureIdAndPageId(this.context, processedConfig, "image"), children);
     } else {
-      this.element("image", ensureId(processedConfig, "image"));
+      this.element("image", ensureIdAndPageId(this.context, processedConfig, "image"));
     }
   }
 

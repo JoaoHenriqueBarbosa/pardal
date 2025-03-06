@@ -96,6 +96,7 @@ export function createElement(pardal: Pardal, elementType: ElementType, config: 
   // Configuração completa do elemento
   const element: LayoutElement = {
     id: config.id || `element-${currentContext.generation}-${currentContext.layoutElements.length}`,
+    pageId: config.pageId || currentContext.currentPageId,
     children: [],
     dimensions: { width: 0, height: 0 },
     minDimensions: { width: 0, height: 0 },

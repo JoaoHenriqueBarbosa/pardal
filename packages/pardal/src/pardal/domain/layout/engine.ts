@@ -40,6 +40,7 @@ function measureTextDimensions(
     const tempDoc = context.pdfKitFactory.createDocument({ autoFirstPage: false });
 
     const fontFamily = context.fonts?.regular || "Helvetica";
+    
     tempDoc.font(fontFamily).fontSize(fontSize);
 
     const width = tempDoc.widthOfString(textContent);
@@ -1058,6 +1059,7 @@ function generateRenderCommands(pardal: Pardal): void {
     switch (element.elementType) {
       case "rectangle":
         const rectCmd = createRectangleCommand(
+          element.pageId,
           boundingBox,
           element.backgroundColor,
           element.cornerRadius
@@ -1067,6 +1069,7 @@ function generateRenderCommands(pardal: Pardal): void {
 
       case "circle":
         const circleCmd = createCircleCommand(
+          element.pageId,
           boundingBox,
           element.backgroundColor
         );
@@ -1085,7 +1088,7 @@ function generateRenderCommands(pardal: Pardal): void {
           }
 
           if (allWords.length > 0) {
-            const textCmd = createTextCommandFromConfig(boundingBox, {
+            const textCmd = createTextCommandFromConfig(element.pageId, boundingBox, {
               content: allWords,
               color: typeof color === "string" ? parseColor(color) : color,
               fontId: textConfig.fontId,
@@ -1108,6 +1111,7 @@ function generateRenderCommands(pardal: Pardal): void {
             currentContext.logger.debug("Configuração da imagem:", element.imageConfig);
           }
           const imageCmd = createImageCommandFromConfig(
+            element.pageId,
             boundingBox,
             {
               source: element.imageConfig.source,
@@ -1212,6 +1216,7 @@ function positionElement(
   if (element.elementType === "rectangle") {
     pardal.addRenderCommand(
       createRectangleCommand(
+        element.pageId,
         boundingBox,
         element.backgroundColor,
         element.cornerRadius,
@@ -1225,7 +1230,7 @@ function positionElement(
     }
   } else if (element.elementType === "circle") {
     pardal.addRenderCommand(
-      createCircleCommand(boundingBox, element.backgroundColor, 0)
+      createCircleCommand(element.pageId, boundingBox, element.backgroundColor, 0)
     );
     if (currentContext.debugMode) {
       currentContext.logger.debug(
@@ -1236,6 +1241,7 @@ function positionElement(
     // Processar elemento de imagem
     pardal.addRenderCommand(
       createImageCommandFromConfig(
+        element.pageId,
         boundingBox,
         {
           source: element.imageConfig.source,
@@ -1374,6 +1380,7 @@ function positionElement(
         // Adicionar comando de renderização para esta linha
         pardal.addRenderCommand(
           createTextCommandFromConfig(
+            element.pageId,
             lineBoundingBox,
             {
               content: line.content,
@@ -1428,6 +1435,7 @@ function positionElement(
 
       pardal.addRenderCommand(
         createTextCommandFromConfig(
+          element.pageId,
           boundingBox,
           {
             content: element.measuredWords || [],
