@@ -2,14 +2,14 @@ import { LayoutConfig, ElementType, Direction, LayoutAlignmentX, LayoutAlignment
 import { ElementDeclaration, LayoutElement } from '../domain/model/element';
 import { parseColor } from '../domain/utils/color';
 import { parsePadding } from '../domain/utils/padding';
-import { getCurrentContext } from '../domain/layout/context';
 import { Sizing } from '../domain/layout/sizing';
+import Pardal from '..';
 
 /**
  * Cria um elemento com a configuração especificada
  */
-export function createElement(elementType: ElementType, config: ElementDeclaration = {}): void {
-  const currentContext = getCurrentContext();
+export function createElement(pardal: Pardal, elementType: ElementType, config: ElementDeclaration = {}): void {
+  const currentContext = pardal.getContext();
   
   // Processar cor de fundo e padding
   const backgroundColor = parseColor(config.fillColor || config.backgroundColor);
@@ -108,14 +108,12 @@ export function createElement(elementType: ElementType, config: ElementDeclarati
   };
   
   if (currentContext.debugMode) {
-    if (getCurrentContext().debugMode) {
-      console.log(`Criando elemento ${element.id} (${elementType}) com childAlignment: x=${finalLayoutConfig.childAlignment.x}, y=${finalLayoutConfig.childAlignment.y}`);
-    }
+    currentContext.logger.debug(`Criando elemento ${element.id} (${elementType}) com childAlignment: x=${finalLayoutConfig.childAlignment.x}, y=${finalLayoutConfig.childAlignment.y}`);
   }
-  
+
   // Adicionar ao contexto
-  currentContext.layoutElements.push(element);
-  
+  pardal.addLayoutElement(element);
+
   // Adicionar ao pai atual
   if (currentContext.openLayoutElementStack.length > 0) {
     const parent = currentContext.openLayoutElementStack[currentContext.openLayoutElementStack.length - 1];
@@ -123,23 +121,23 @@ export function createElement(elementType: ElementType, config: ElementDeclarati
   }
   
   // Adicionar ao stack de elementos abertos
-  currentContext.openLayoutElementStack.push(element);
+  pardal.addOpenLayoutElementStack(element);
   
   // Adicionar ao mapa de ids
   if (element.id) {
-    currentContext.idMap.set(element.id, element);
+    pardal.addIdMap(element.id, element);
   }
 }
 
 /**
  * Fecha o elemento atual
  */
-export function endElement(): void {
-  const currentContext = getCurrentContext();
+export function endElement(pardal: Pardal): void {
+  const currentContext = pardal.getContext();
   
   if (currentContext.openLayoutElementStack.length === 0) {
     throw new Error('No open element to close.');
   }
   
-  currentContext.openLayoutElementStack.pop();
+  pardal.popOpenLayoutElementStack();
 } 

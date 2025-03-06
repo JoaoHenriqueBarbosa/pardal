@@ -1,120 +1,335 @@
-/**
- * Pardal - Sistema minimalista de renderização para PDFKit baseado na lógica do Clay
- * Suporte para retângulos e círculos com posicionamento absoluto
- */
-
-// Re-exportar tipos do domínio
-export * from "./domain/model/types";
-export * from "./domain/model/element";
-export * from "./domain/rendering/commands";
-
-// Exportar utilitários de layout
-export { Alignment } from "./domain/layout/alignment";
-export { Sizing } from "./domain/layout/sizing";
-
-// Exportar serviços de aplicação
-export { LayoutService } from "./application/layout-service";
-export { createElement, endElement } from "./application/element-factory";
-
-// Exportar helpers de elementos da interface
-export {
-  element,
-  rect,
-  circle,
-  text,
-  withChildren,
-  withRect,
-  group,
-  row,
-  column,
-} from "./interface/element-helpers";
-
-// Exportar funções principais como funções diretas para compatibilidade
-import { LayoutService } from "./application/layout-service";
-import { Dimensions, FontOptions, DEFAULT_FONTS } from "./domain/model/types";
-import { createPDFDocument as createPDF } from "./infrastructure/pdf-renderer";
+import { createElement, endElement } from "./application/element-factory";
+import { calculateFinalLayout } from "./domain/layout/engine";
+import { ElementDeclaration, LayoutElement } from "./domain/model/element";
+import {
+  DEFAULT_FONTS,
+  Dimensions,
+  Direction,
+  ElementType,
+  FontOptions,
+} from "./domain/model/types";
 import { RenderCommand } from "./domain/rendering/commands";
-import { getCurrentContext } from "./domain/layout/context";
+import { renderToPDF } from "./infrastructure/pdf-renderer";
+import { PDFKitFactory, DefaultPDFKitFactory } from "./domain/model/pdfkit";
+// Importando Logger como tipo para evitar problemas
+import type { Logger } from "./domain/utils/logger";
+import { ConsoleLogger, LogLevel } from "./domain/utils/logger";
 
-// Exportar serviços de infraestrutura
-export { renderToPDF } from "./infrastructure/pdf-renderer";
-
-/**
- * Inicializar o contexto
- */
-export function initialize(
-  dimensions: Dimensions,
-  debug: boolean = false,
-  font?: FontOptions
-): void {
-  LayoutService.initialize(dimensions, debug, font);
-}
-
-/**
- * Começar o layout
- */
-export function beginLayout(): void {
-  LayoutService.beginLayout();
-}
-
-/**
- * Finalizar o layout e obter comandos de renderização
- */
-export function endLayout(): RenderCommand[] {
-  return LayoutService.endLayout();
-}
-
-/**
- * Criar um documento PDF
- */
-export function createPDFDocument(options?: {
-  margin?: { top: number, left: number, bottom: number, right: number };
-  size?: [number, number];
-  debug?: boolean;
-  font?: FontOptions;
-}): any {
-  const doc = createPDF(options);
-  initialize(
-    { width: options?.size?.[0] ?? 595.28, height: options?.size?.[1] ?? 841.89 },
-    !!options?.debug,
-    options?.font || DEFAULT_FONTS
-  );
-
-  return doc;
-}
-
-/**
- * Adiciona uma nova página ao documento PDF
- * 
- * @param doc Documento PDF onde a página será adicionada
- * @param options Opções para a nova página (tamanho, orientação)
- * @returns O documento PDF atualizado
- */
-export function addPage(
-  doc: any,
-  options?: {
-    size?: [number, number];
-    orientation?: 'portrait' | 'landscape';
+// Utility functions
+function ensureId(
+  config: ElementDeclaration,
+  prefix: string
+): ElementDeclaration {
+  if (!config.id) {
+    config.id = `${prefix}-${Math.random().toString(36).substr(2, 9)}`;
   }
-): any {
-  // Adiciona uma nova página ao documento
-  doc.addPage({
-    size: options?.size,
-    layout: options?.orientation
-  });
-  
-  // Inicializa o layout para a nova página
-  initialize(
-    { 
-      width: options?.size?.[0] ?? 595.28, 
-      height: options?.size?.[1] ?? 841.89 
+  return config;
+}
+
+// Contexto do Pardal
+export interface PardalContext {
+  layoutDimensions: Dimensions;
+  layoutElements: LayoutElement[];
+  renderCommands: RenderCommand[];
+  processedElements: Set<string>;
+  openLayoutElementStack: LayoutElement[];
+  currentParentId: number;
+  generation: number;
+  idMap: Map<string, LayoutElement>;
+  debugMode: boolean;
+  fonts?: FontOptions;
+  pdfKitFactory: PDFKitFactory;
+  logger: Logger;
+}
+
+export default class Pardal {
+  private context: PardalContext;
+
+  constructor() {
+    this.context = {
+      layoutDimensions: { width: 0, height: 0 },
+      layoutElements: [],
+      renderCommands: [],
+      processedElements: new Set(),
+      openLayoutElementStack: [],
+      currentParentId: 0,
+      generation: 0,
+      idMap: new Map(),
+      debugMode: false,
+      fonts: DEFAULT_FONTS,
+      pdfKitFactory: new DefaultPDFKitFactory(),
+      logger: new ConsoleLogger(),
+    };
+  }
+
+  static createDocument(
+    options: {
+      dimensions: Dimensions;
+      debugMode?: boolean;
+      fonts?: FontOptions;
+      pdfKitFactory?: PDFKitFactory;
+      logger?: Logger;
+      logLevel?: LogLevel;
     },
-    getCurrentContext().debugMode,
-    getCurrentContext().fonts || DEFAULT_FONTS
-  );
-  
-  // Inicia um novo layout
-  beginLayout();
-  
-  return doc;
+    childrenFn: (pardal: Pardal) => void
+  ): Promise<ArrayBuffer> {
+    const pardal = new Pardal();
+    pardal.context.layoutDimensions = options.dimensions;
+    pardal.context.debugMode = options.debugMode || false;
+    pardal.context.fonts = options.fonts || DEFAULT_FONTS;
+
+    // Usar factory e logger injetados, se disponíveis
+    if (options.pdfKitFactory) {
+      pardal.context.pdfKitFactory = options.pdfKitFactory;
+    }
+
+    if (options.logger) {
+      pardal.context.logger = options.logger;
+    } else {
+      // Define o nível de log baseado nas opções fornecidas
+      const logLevel = options.logLevel || (options.debugMode ? LogLevel.DEBUG : LogLevel.INFO);
+      pardal.context.logger = new ConsoleLogger(logLevel);
+    }
+
+    childrenFn(pardal);
+
+    return pardal.render();
+  }
+
+  render(): Promise<ArrayBuffer> {
+    calculateFinalLayout(this);
+    return renderToPDF(this);
+  }
+
+  element(type: ElementType, config: ElementDeclaration = {}): void {
+    if (this.context.debugMode) {
+      this.context.logger.debug(`Criando elemento ${type}`);
+    }
+    createElement(this, type, ensureId(config, "element"));
+    endElement(this);
+  }
+
+  // Helper para criar um retângulo e fechá-lo imediatamente
+  rect(config: ElementDeclaration = {}): void {
+    if (this.context.debugMode) {
+      this.context.logger.debug(`Criando retângulo ${config.id || "sem id"}`);
+    }
+    this.element("rectangle", ensureId(config, "rect"));
+  }
+
+  // Helper para criar um círculo e fechá-lo imediatamente
+  circle(config: ElementDeclaration = {}): void {
+    if (this.context.debugMode) {
+      this.context.logger.debug(`Criando círculo ${config.id || "sem id"}`);
+    }
+    this.element("circle", ensureId(config, "circle"));
+  }
+
+  // Helper para criar um elemento de texto e fechá-lo imediatamente
+  text(content: string, config: ElementDeclaration = {}): void {
+    if (this.context.debugMode) {
+      this.context.logger.debug(
+        `Criando elemento de texto ${config.id || "sem id"}`
+      );
+    }
+
+    // Forma única e simples:
+    // text("Meu texto", { backgroundColor: "red", fontSize: 16, color: "blue" });
+
+    const processedConfig: ElementDeclaration = {
+      ...config,
+      text: content,
+    };
+
+    this.element("text", ensureId(processedConfig, "text"));
+  }
+
+  // Helper para criar um elemento com filho(s) usando uma função de callback
+  withChildren(
+    type: ElementType,
+    config: ElementDeclaration,
+    children: () => void
+  ): void {
+    if (this.context.debugMode) {
+      this.context.logger.debug(`Abrindo elemento ${type} com filhos`);
+    }
+    createElement(this, type, ensureId(config, type));
+    children();
+    endElement(this);
+    if (this.context.debugMode) {
+      this.context.logger.debug(`Fechando elemento ${type} com filhos`);
+    }
+  }
+
+  // Helper para criar um retângulo com filho(s)
+  withRect(config: ElementDeclaration, children: () => void): void {
+    this.withChildren("rectangle", ensureId(config, "rect"), children);
+  }
+
+  // Helper de grupo para organizar elementos
+  group(
+    config: ElementDeclaration = { fillColor: "transparent" },
+    children: () => void
+  ): void {
+    this.withRect(ensureId(config, "group"), children);
+  }
+
+  // Helper de linha (grupo horizontal)
+  row(
+    config: ElementDeclaration = { fillColor: "transparent" },
+    children: () => void
+  ): void {
+    this.withRect(
+      ensureId(
+        {
+          ...config,
+          direction: Direction.ROW,
+        },
+        "row"
+      ),
+      children
+    );
+  }
+
+  // Helper de coluna (grupo vertical)
+  column(
+    config: ElementDeclaration = { fillColor: "transparent" },
+    children: () => void
+  ): void {
+    this.withRect(
+      ensureId(
+        {
+          ...config,
+          direction: Direction.COLUMN,
+        },
+        "column"
+      ),
+      children
+    );
+  }
+
+  // Helper para criar um elemento de imagem com filho(s)
+  withImage(
+    source: string,
+    config: ElementDeclaration,
+    children: () => void
+  ): void {
+    const processedConfig: ElementDeclaration = {
+      ...config,
+      source: source,
+    };
+
+    this.withChildren("image", ensureId(processedConfig, "image"), children);
+  }
+
+  // Helper para criar um elemento de imagem e fechá-lo imediatamente ou com filhos
+  image(
+    source: string,
+    config: ElementDeclaration = {},
+    children?: () => void
+  ): void {
+    if (this.context.debugMode) {
+      this.context.logger.debug(
+        `Criando elemento de imagem ${config.id || "sem id"}`
+      );
+    }
+
+    const processedConfig: ElementDeclaration = {
+      ...config,
+      source: source,
+    };
+
+    if (children) {
+      this.withChildren("image", ensureId(processedConfig, "image"), children);
+    } else {
+      this.element("image", ensureId(processedConfig, "image"));
+    }
+  }
+
+  // Add context getters
+  getContext(): PardalContext {
+    return this.context;
+  }
+
+  getLayoutElements(): LayoutElement[] {
+    return this.context.layoutElements;
+  }
+
+  getLayoutDimensions(): Dimensions {
+    return this.context.layoutDimensions;
+  }
+
+  getRenderCommands(): RenderCommand[] {
+    return this.context.renderCommands;
+  }
+
+  getProcessedElements(): Set<string> {
+    return this.context.processedElements;
+  }
+
+  getOpenLayoutElementStack(): LayoutElement[] {
+    return this.context.openLayoutElementStack;
+  }
+
+  getCurrentParentId(): number {
+    return this.context.currentParentId;
+  }
+
+  getGeneration(): number {
+    return this.context.generation;
+  }
+
+  getIdMap(): Map<string, LayoutElement> {
+    return this.context.idMap;
+  }
+
+  getDebugMode(): boolean {
+    return this.context.debugMode;
+  }
+
+  getFonts(): FontOptions | undefined {
+    return this.context.fonts;
+  }
+
+  // Setters
+
+  setLayoutDimensions(dimensions: Dimensions): void {
+    this.context.layoutDimensions = dimensions;
+  }
+
+  addOpenLayoutElementStack(element: LayoutElement): void {
+    this.context.openLayoutElementStack.push(element);
+  }
+
+  popOpenLayoutElementStack(): void {
+    this.context.openLayoutElementStack.pop();
+  }
+
+  addIdMap(id: string, element: LayoutElement): void {
+    this.context.idMap.set(id, element);
+  }
+
+  addLayoutElement(element: LayoutElement): void {
+    this.context.layoutElements.push(element);
+  }
+
+  addRenderCommand(command: RenderCommand): void {
+    this.context.renderCommands.push(command);
+  }
+
+  setDebugMode(debugMode: boolean): void {
+    this.context.debugMode = debugMode;
+  }
+
+  setFonts(fonts: FontOptions): void {
+    this.context.fonts = fonts;
+  }
+
+  clearRenderCommands(): void {
+    this.context.renderCommands = [];
+  }
+
+  clearProcessedElements(): void {
+    this.context.processedElements.clear();
+  }
 }
