@@ -110,8 +110,17 @@ export function createElement(pardal: Pardal, elementType: ElementType, config: 
     imageConfig
   };
   
+  // Adicionar posição absoluta se fornecida
+  if (config.absolute && config.x !== undefined && config.y !== undefined) {
+    element.position = { x: config.x, y: config.y };
+    element.absolute = true;
+  }
+  
   if (currentContext.debugMode) {
     currentContext.logger.debug(`Criando elemento ${element.id} (${elementType}) com childAlignment: x=${finalLayoutConfig.childAlignment.x}, y=${finalLayoutConfig.childAlignment.y}`);
+    if (element.position) {
+      currentContext.logger.debug(`  Posição absoluta definida: (${element.position.x}, ${element.position.y})`);
+    }
   }
 
   // Adicionar ao contexto

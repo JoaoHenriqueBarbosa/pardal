@@ -723,6 +723,11 @@ function calculateElementFitSize(
     for (let i = 0; i < element.children.length; i++) {
       const child = element.children[i];
 
+      // Ignorar elementos com posicionamento absoluto
+      if (child.absolute) {
+        continue;
+      }
+
       // Certifique-se de que as dimensões mínimas já foram calculadas
       if (!child.minDimensions) {
         calculateElementFitSize(context, child);
@@ -745,7 +750,7 @@ function calculateElementFitSize(
       maxHeight = Math.max(maxHeight, childHeight);
 
       // Adicionar gap entre elementos
-      if (i < element.children.length - 1) {
+      if (i < element.children.length - 1 && !element.children[i + 1].absolute) {
         totalWidth += layoutConfig.childGap;
       }
     }
@@ -753,6 +758,11 @@ function calculateElementFitSize(
     // Layout em coluna: somar alturas e pegar largura máxima
     for (let i = 0; i < element.children.length; i++) {
       const child = element.children[i];
+
+      // Ignorar elementos com posicionamento absoluto
+      if (child.absolute) {
+        continue;
+      }
 
       // Certifique-se de que as dimensões mínimas já foram calculadas
       if (!child.minDimensions) {
@@ -776,7 +786,7 @@ function calculateElementFitSize(
       maxWidth = Math.max(maxWidth, childWidth);
 
       // Adicionar gap entre elementos
-      if (i < element.children.length - 1) {
+      if (i < element.children.length - 1 && !element.children[i + 1].absolute) {
         totalHeight += layoutConfig.childGap;
       }
     }
@@ -926,6 +936,14 @@ function distributeSpaceToChildren(
     return;
   }
 
+  // Filtrando elementos que não são posicionados absolutamente
+  const nonAbsoluteChildren = parent.children.filter(child => !child.absolute);
+  
+  // Se não houver filhos não absolutos, não há nada a distribuir
+  if (nonAbsoluteChildren.length === 0) {
+    return;
+  }
+
   // Espaço disponível para os filhos após remover o padding
   let availableSpace = Math.max(0, parentSize - parentPadding);
 
@@ -934,11 +952,11 @@ function distributeSpaceToChildren(
   let growContainerCount = 0;
 
   // Calcular total de gaps entre elementos
-  const totalGapSpace = (parent.children.length - 1) * layoutConfig.childGap;
+  const totalGapSpace = (nonAbsoluteChildren.length - 1) * layoutConfig.childGap;
   availableSpace -= totalGapSpace;
 
   // Processar elementos com tamanho fixo e percentual
-  for (const child of parent.children) {
+  for (const child of nonAbsoluteChildren) {
     const childSizing = isXAxis
       ? child.layoutConfig.sizing.width
       : child.layoutConfig.sizing.height;
@@ -1005,7 +1023,7 @@ function distributeSpaceToChildren(
   if (growContainerCount > 0 && remainingSpace > 0) {
     const spacePerGrowElement = remainingSpace / growContainerCount;
 
-    for (const child of parent.children) {
+    for (const child of nonAbsoluteChildren) {
       const childSizing = isXAxis
         ? child.layoutConfig.sizing.width
         : child.layoutConfig.sizing.height;
@@ -1032,7 +1050,7 @@ function distributeSpaceToChildren(
   if (!isLayoutAlongAxis) {
     const perpendicularSize = parentSize - parentPadding;
 
-    for (const child of parent.children) {
+    for (const child of nonAbsoluteChildren) {
       const childSizing = isXAxis
         ? child.layoutConfig.sizing.width
         : child.layoutConfig.sizing.height;
@@ -1055,7 +1073,13 @@ function distributeSpaceToChildren(
   }
 
   // Processar todos os filhos recursivamente
-  for (const child of parent.children) {
+  for (const child of nonAbsoluteChildren) {
+    distributeSpaceToChildren(context, child, isXAxis);
+  }
+  
+  // Processar também os filhos com posicionamento absoluto
+  const absoluteChildren = parent.children.filter(child => child.absolute);
+  for (const child of absoluteChildren) {
     distributeSpaceToChildren(context, child, isXAxis);
   }
 }
@@ -1255,17 +1279,22 @@ function positionElement(
   const width = element.dimensions.width;
   const height = element.dimensions.height;
 
+  // Se o elemento já tem uma posição absoluta definida, usar ela em vez da posição calculada
+  const finalPosition = element.absolute && element.position 
+    ? element.position 
+    : position;
+
   // Criar bounding box para este elemento
   const boundingBox = {
-    x: position.x,
-    y: position.y,
+    x: finalPosition.x,
+    y: finalPosition.y,
     width: width,
     height: height,
   };
 
   if (currentContext.debugMode) {
     currentContext.logger.debug(
-      `Posicionando elemento ${element.id} em (${position.x}, ${position.y}) com tamanho ${width}x${height}`
+      `Posicionando elemento ${element.id} em (${finalPosition.x}, ${finalPosition.y}) com tamanho ${width}x${height}${element.absolute ? ' (absoluto)' : ''}`
     );
   }
 
@@ -1651,6 +1680,13 @@ function positionElement(
 
   for (let i = 0; i < element.children.length; i++) {
     const child = element.children[i];
+
+    // Pular o cálculo de posição para elementos com posicionamento absoluto
+    if (child.absolute && child.position) {
+      // Posicionar este filho e seus filhos recursivamente
+      positionElement(pardal, child, child.position);
+      continue;
+    }
 
     // Determinar posição individual do filho
     let childX = currentX;

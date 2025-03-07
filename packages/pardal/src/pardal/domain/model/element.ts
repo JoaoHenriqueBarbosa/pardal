@@ -35,6 +35,11 @@ export interface ElementDeclaration {
   direction?: Direction;
   childAlignment?: ChildAlignment;
   
+  // Propriedades para posicionamento absoluto
+  x?: number;
+  y?: number;
+  absolute?: boolean;  // Quando true, usa posicionamento absoluto
+  
   // Propriedades de texto
   text?: TextElementConfig | string; // Conteúdo do texto ou configuração completa (para compatibilidade)
   
@@ -69,6 +74,7 @@ export interface LayoutElement {
   dimensions: Dimensions;
   minDimensions: Dimensions;
   position?: Vector2;  // Posição do elemento no layout (x, y)
+  absolute?: boolean;  // Indica se o elemento usa posicionamento absoluto
   layoutConfig: LayoutConfig;
   backgroundColor: Color;
   cornerRadius?: CornerRadius;
