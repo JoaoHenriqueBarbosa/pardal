@@ -1,6 +1,6 @@
 {
   "name": "pardal",
-  "version": "0.1.2",
+  "version": "0.1.4",
   "description": "PDF Automatic Rendering Dynamic Access Library",
   "type": "module",
   "main": "dist/index.js",

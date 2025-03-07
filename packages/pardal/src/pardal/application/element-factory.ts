@@ -27,6 +27,7 @@ export function createElement(pardal: Pardal, elementType: ElementType, config: 
         wrapMode: config.wrapMode || TextWrapMode.WORDS,
         textAlignment: config.textAlignment || TextAlignment.LEFT,
         lineHeight: config.lineHeight,
+        lineSpacingFactor: config.lineSpacingFactor,
         letterSpacing: config.letterSpacing,
         fontId: config.fontId,
         fontFamily: config.fontFamily,
@@ -44,7 +45,8 @@ export function createElement(pardal: Pardal, elementType: ElementType, config: 
         color: config.text.color || config.fillColor || config.backgroundColor || '#000000',
         fontSize: config.text.fontSize || 16,
         wrapMode: config.text.wrapMode || TextWrapMode.WORDS,
-        textAlignment: config.text.textAlignment || TextAlignment.LEFT
+        textAlignment: config.text.textAlignment || TextAlignment.LEFT,
+        lineSpacingFactor: config.text.lineSpacingFactor || config.lineSpacingFactor
       };
     }
   }

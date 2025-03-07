@@ -8,7 +8,12 @@ import { PDFDocument } from "../domain/model/pdfkit";
 import Pardal from "../..";
 import { PardalContext } from "..";
 import { Buffer } from "buffer";
-import { isEmoji, renderEmoji } from "../domain/utils/emoji";
+import {
+  renderEmoji,
+  isEmoji,
+  isKeyCap,
+} from "../domain/utils/emoji";
+import { MeasuredWord } from "../domain/model/element";
 
 /**
  * Renderiza a árvore de comandos para um documento PDF
@@ -479,9 +484,17 @@ async function handleEmojiRendering(
   y: number,
   fontSize: number | undefined,
   font: string
-): Promise<{widthOfEmoji: number, rendered: boolean}> {
+): Promise<{widthOfEmoji: number, rendered: boolean, isKeyCap: boolean}> {
+  // Verificar se é um emoji
   if (!isEmoji(text)) {
-    return { widthOfEmoji: 0, rendered: false };
+    return { widthOfEmoji: 0, rendered: false, isKeyCap: false };
+  }
+  
+  // Verificar se é um keycap
+  const isKeyCapEmoji = isKeyCap(text);
+  
+  if (context.debugMode && isKeyCapEmoji) {
+    context.logger.debug(`Emoji keycap detectado: "${text}"`);
   }
   
   const widthOfEmoji = doc
@@ -498,12 +511,19 @@ async function handleEmojiRendering(
     if (context.debugMode) {
       context.logger.debug(`Pulando renderização de emoji como imagem devido a useImageForEmojis = false`);
     }
-    return { widthOfEmoji, rendered: false };
+    return { widthOfEmoji, rendered: false, isKeyCap: isKeyCapEmoji };
   }
     
   // Aplicar offsets para posicionamento
-  const offsetX = widthOfEmoji / 8;
-  const offsetY = widthOfEmoji / 8;
+  let offsetX = widthOfEmoji / 8;
+  let offsetY = widthOfEmoji / 8;
+
+  // Verificar se é um keycap e aplicar offsets adicionais
+  if (isKeyCapEmoji) {
+    // Aplicar offsets adicionais específicos para keycaps
+    offsetX += widthOfEmoji / 16;
+    offsetY += widthOfEmoji / 16;
+  }
 
   // Renderizar emoji usando função específica
   const renderSuccess = await renderEmoji(
@@ -518,7 +538,7 @@ async function handleEmojiRendering(
   
   // Se não renderizou com sucesso, não consideramos como "rendered"
   // para que o texto original seja mostrado
-  return { widthOfEmoji, rendered: renderSuccess };
+  return { widthOfEmoji, rendered: renderSuccess, isKeyCap: isKeyCapEmoji };
 }
 
 // Helper function to configure font and text appearance
@@ -544,6 +564,7 @@ async function drawText(
   if (!command.renderData.text) return;
 
   const { content, color, fontSize } = command.renderData.text;
+  const correction = -((fontSize || 16) / 6);
   const { x, y, width, height } = command.boundingBox;
 
   if (context.debugMode) {
@@ -580,12 +601,9 @@ async function drawText(
     
     // Configurar aparência do texto
     configureTextAppearance(doc, fontFamily, fontSize, hexColor, rendered ? 0 : color.a / 255);
-    
-    // Calcular o ajuste de baseline para centralização vertical
-    const baselineAdjustment = (height - doc.currentLineHeight()) / 2;
 
     // Renderizar o texto
-    doc.text(text, x, y + baselineAdjustment, {
+    doc.text(text, x, y + correction, {
       width: width,
       height: height,
       align: "left",
@@ -598,12 +616,9 @@ async function drawText(
     // Posição inicial para renderização
     let currentY = y;
 
-    // Em vez de tentar renderizar segmento por segmento com 'continued',
-    // vamos renderizar linha por linha em um processo mais controlado
-
     // Primeiro vamos medir e agrupar segmentos em linhas
-    let lines: { segments: { text: string; font: string }[]; y: number }[] = [
-      { segments: [], y: currentY },
+    let lines: { segments: (MeasuredWord & { font: string })[]; y: number }[] = [
+      { segments: [], y: currentY + correction },
     ];
     let lineIndex = 0;
     let lineWidth = 0;
@@ -615,31 +630,26 @@ async function drawText(
 
       // Medir o texto com a fonte correta
       doc.font(fontFamily).fontSize(fontSize || 16);
-      const segmentWidth = doc.widthOfString(segment.text);
+      const segmentWidth = segment.width;
 
       // Verificar se o segmento cabe na linha atual
       if (lineWidth + segmentWidth > width && lineWidth > 0) {
         // Criar nova linha
         currentY += doc.currentLineHeight();
-        lines.push({ segments: [], y: currentY });
+        lines.push({ segments: [], y: currentY + correction });
         lineIndex++;
         lineWidth = 0;
       }
 
       // Adicionar segmento à linha atual
       lines[lineIndex].segments.push({
-        text: segment.text,
+        ...segment,
         font: fontFamily,
       });
 
       // Atualizar largura da linha
       lineWidth += segmentWidth;
     }
-
-    // Calcular o ajuste de baseline para centralização vertical
-    const lineHeight = doc.currentLineHeight();
-    const totalContentHeight = lines.length * lineHeight;
-    const baselineAdjustment = (height - totalContentHeight) / 2;
 
     // Agora renderizar linha por linha, segmento por segmento
     for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
@@ -669,7 +679,7 @@ async function drawText(
           doc, 
           segment.text, 
           xPos, 
-          line.y + baselineAdjustment, 
+          line.y, 
           fontSize,
           segmentFont
         );
@@ -678,14 +688,12 @@ async function drawText(
         configureTextAppearance(doc, segmentFont, fontSize, hexColor, rendered ? 0 : color.a / 255);
 
         if (isFirstSegmentInFirstLine) {
-          doc.text(segment.text, xPos, line.y + baselineAdjustment, {
-            continued: true,
-            lineGap: 0,
+          doc.text(segment.text, xPos, line.y, {
+            continued: true
           });
         } else {
-          doc.text(segment.text, {
-            continued: !isLastSegmentInLastLine,
-            lineGap: 0,
+          doc.text(segment.text, doc.x, line.y, {
+            continued: !isLastSegmentInLastLine
           });
         }
 
@@ -695,7 +703,7 @@ async function drawText(
 
         // Avançar a posição manual e explicitamente apenas se não for o último segmento
         if (!isLastSegmentInLastLine) {
-          xPos += doc.widthOfString(segment.text);
+          xPos += segment.width;
         }
       }
     }

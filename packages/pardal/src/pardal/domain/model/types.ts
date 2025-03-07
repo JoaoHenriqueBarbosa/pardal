@@ -129,6 +129,7 @@ export interface TextElementConfig {
   fontSize?: number;       // Tamanho da fonte em pixels
   letterSpacing?: number;  // Espaçamento adicional entre letras
   lineHeight?: number;     // Altura da linha em pixels (padrão: fontSize * 1.2)
+  lineSpacingFactor?: number; // Fator de espaçamento entre linhas (padrão: valor do contexto)
   wrapMode?: TextWrapMode; // Modo de quebra de texto
   textAlignment?: TextAlignment; // Alinhamento horizontal do texto (LEFT, CENTER, RIGHT)
   fontFamily?: string;     // Família de fonte a usar

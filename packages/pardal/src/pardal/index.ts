@@ -52,6 +52,7 @@ export interface PardalContext {
   pages: Page[];
   currentPageId: number;
   useImageForEmojis: boolean;
+  lineSpacingFactor: number;
 }
 
 export default class Pardal {
@@ -74,6 +75,7 @@ export default class Pardal {
       pages: [],
       currentPageId: 0,
       useImageForEmojis: false,
+      lineSpacingFactor: 1.2,
     };
   }
 
@@ -86,6 +88,7 @@ export default class Pardal {
       logger?: Logger;
       logLevel?: LogLevel;
       useImageForEmojis?: boolean;
+      lineSpacingFactor?: number;
     },
     childrenFn: (pardal: Pardal) => void
   ): Promise<ArrayBuffer> {
@@ -94,6 +97,7 @@ export default class Pardal {
     pardal.context.debugMode = options.debugMode || false;
     pardal.context.fonts = options.fonts || DEFAULT_FONTS;
     pardal.context.useImageForEmojis = options.useImageForEmojis !== undefined ? options.useImageForEmojis : true;
+    pardal.context.lineSpacingFactor = options.lineSpacingFactor !== undefined ? options.lineSpacingFactor : 1.2;
     
     // Usar factory e logger injetados, se disponíveis
     if (options.pdfKitFactory) {

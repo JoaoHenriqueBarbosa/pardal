@@ -110,8 +110,6 @@ function cleanSegments(segments: Partial<MeasuredWord>[]): Partial<MeasuredWord>
       });
     }
   }
-  
-  console.log(JSON.stringify(wordSegments, null, 2));
   return wordSegments;
 }
 

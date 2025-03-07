@@ -45,6 +45,7 @@ export interface ElementDeclaration {
   fontId?: number;
   letterSpacing?: number;
   lineHeight?: number;
+  lineSpacingFactor?: number; // Fator de espaçamento entre linhas
   textAlignment?: TextAlignment;
   wrapMode?: TextWrapMode;
   fontFamily?: string;
