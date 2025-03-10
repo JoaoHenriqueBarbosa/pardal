@@ -1,19 +1,19 @@
 import { createElement, endElement } from "./application/element-factory";
 import { calculateFinalLayout } from "./domain/layout/engine";
-import { ElementDeclaration, LayoutElement } from "./domain/model/element";
+import type { ElementDeclaration, LayoutElement } from "./domain/model/element";
+import { DefaultPDFKitFactory, type PDFKitFactory } from "./domain/model/pdfkit";
 import {
   DEFAULT_FONTS,
-  Dimensions,
+  type Dimensions,
   Direction,
-  ElementType,
-  FontOptions,
+  type ElementType,
+  type FontOptions,
 } from "./domain/model/types";
-import { RenderCommand } from "./domain/rendering/commands";
-import { renderToPDF } from "./infrastructure/pdf-renderer";
-import { PDFKitFactory, DefaultPDFKitFactory } from "./domain/model/pdfkit";
+import type { RenderCommand } from "./domain/rendering/commands";
 // Importando Logger como tipo para evitar problemas
 import type { Logger } from "./domain/utils/logger";
 import { ConsoleLogger, LogLevel } from "./domain/utils/logger";
+import { renderToPDF } from "./infrastructure/pdf-renderer";
 
 // Utility functions
 function ensureIdAndPageId(
@@ -96,9 +96,11 @@ export default class Pardal {
     pardal.context.layoutDimensions = options.dimensions;
     pardal.context.debugMode = options.debugMode || false;
     pardal.context.fonts = options.fonts || DEFAULT_FONTS;
-    pardal.context.useImageForEmojis = options.useImageForEmojis !== undefined ? options.useImageForEmojis : true;
-    pardal.context.lineSpacingFactor = options.lineSpacingFactor !== undefined ? options.lineSpacingFactor : 1.2;
-    
+    pardal.context.useImageForEmojis =
+      options.useImageForEmojis !== undefined ? options.useImageForEmojis : true;
+    pardal.context.lineSpacingFactor =
+      options.lineSpacingFactor !== undefined ? options.lineSpacingFactor : 1.2;
+
     // Usar factory e logger injetados, se disponíveis
     if (options.pdfKitFactory) {
       pardal.context.pdfKitFactory = options.pdfKitFactory;
@@ -122,7 +124,10 @@ export default class Pardal {
     return renderToPDF(this);
   }
 
-  page(configOrChildren: {sizes: Dimensions} | ((pardal: Pardal) => void), children?: (pardal: Pardal) => void): void {
+  page(
+    configOrChildren: { sizes: Dimensions } | ((pardal: Pardal) => void),
+    children?: (pardal: Pardal) => void
+  ): void {
     const pageId = this.context.pages.length + 1;
     this.context.currentPageId = pageId;
 
@@ -162,9 +167,7 @@ export default class Pardal {
   // Helper para criar um elemento de texto e fechá-lo imediatamente
   text(content: string, config: ElementDeclaration = {}): void {
     if (this.context.debugMode) {
-      this.context.logger.debug(
-        `Criando elemento de texto ${config.id || "sem id"}`
-      );
+      this.context.logger.debug(`Criando elemento de texto ${config.id || "sem id"}`);
     }
 
     // Forma única e simples:
@@ -179,11 +182,7 @@ export default class Pardal {
   }
 
   // Helper para criar um elemento com filho(s) usando uma função de callback
-  withChildren(
-    type: ElementType,
-    config: ElementDeclaration,
-    children: () => void
-  ): void {
+  withChildren(type: ElementType, config: ElementDeclaration, children: () => void): void {
     if (this.context.debugMode) {
       this.context.logger.debug(`Abrindo elemento ${type} com filhos`);
     }
@@ -201,20 +200,15 @@ export default class Pardal {
   }
 
   // Helper de grupo para organizar elementos
-  group(
-    config: ElementDeclaration = { fillColor: "transparent" },
-    children: () => void
-  ): void {
+  group(config: ElementDeclaration, children: () => void): void {
     this.withRect(ensureIdAndPageId(this.context, config, "group"), children);
   }
 
   // Helper de linha (grupo horizontal)
-  row(
-    config: ElementDeclaration = { fillColor: "transparent" },
-    children: () => void
-  ): void {
+  row(config: ElementDeclaration, children: () => void): void {
     this.withRect(
-      ensureIdAndPageId(this.context,
+      ensureIdAndPageId(
+        this.context,
         {
           ...config,
           direction: Direction.ROW,
@@ -226,12 +220,10 @@ export default class Pardal {
   }
 
   // Helper de coluna (grupo vertical)
-  column(
-    config: ElementDeclaration = { fillColor: "transparent" },
-    children: () => void
-  ): void {
+  column(config: ElementDeclaration, children: () => void): void {
     this.withRect(
-      ensureIdAndPageId(this.context,
+      ensureIdAndPageId(
+        this.context,
         {
           ...config,
           direction: Direction.COLUMN,
@@ -243,11 +235,7 @@ export default class Pardal {
   }
 
   // Helper para criar um elemento de imagem com filho(s)
-  withImage(
-    source: string,
-    config: ElementDeclaration,
-    children: () => void
-  ): void {
+  withImage(source: string, config: ElementDeclaration, children: () => void): void {
     const processedConfig: ElementDeclaration = {
       ...config,
       source: source,
@@ -257,15 +245,9 @@ export default class Pardal {
   }
 
   // Helper para criar um elemento de imagem e fechá-lo imediatamente ou com filhos
-  image(
-    source: string,
-    config: ElementDeclaration = {},
-    children?: () => void
-  ): void {
+  image(source: string, config: ElementDeclaration = {}, children?: () => void): void {
     if (this.context.debugMode) {
-      this.context.logger.debug(
-        `Criando elemento de imagem ${config.id || "sem id"}`
-      );
+      this.context.logger.debug(`Criando elemento de imagem ${config.id || "sem id"}`);
     }
 
     const processedConfig: ElementDeclaration = {
@@ -274,7 +256,11 @@ export default class Pardal {
     };
 
     if (children) {
-      this.withChildren("image", ensureIdAndPageId(this.context, processedConfig, "image"), children);
+      this.withChildren(
+        "image",
+        ensureIdAndPageId(this.context, processedConfig, "image"),
+        children
+      );
     } else {
       this.element("image", ensureIdAndPageId(this.context, processedConfig, "image"));
     }
@@ -326,6 +312,10 @@ export default class Pardal {
   }
 
   // Setters
+
+  setContext(context: PardalContext): void {
+    this.context = context;
+  }
 
   setLayoutDimensions(dimensions: Dimensions): void {
     this.context.layoutDimensions = dimensions;

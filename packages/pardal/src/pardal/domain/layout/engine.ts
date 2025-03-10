@@ -1,27 +1,28 @@
+import type Pardal from "../..";
+import type { PardalContext } from "../..";
+import type { LayoutElement, MeasuredWord, WrappedTextLine } from "../model/element";
 // Importações
 import {
-  Direction,
-  SizingType,
-  Vector2,
+  type BoundingBox,
   DEFAULT_MAX_SIZE,
   DEFAULT_MIN_SIZE,
+  Direction,
+  type FontOptions,
   LayoutAlignmentX,
   LayoutAlignmentY,
+  SizingType,
   TextAlignment,
-  FontOptions,
-  BoundingBox,
+  type Vector2,
 } from "../model/types";
-import { LayoutElement, MeasuredWord, WrappedTextLine } from "../model/element";
 import {
   createCircleCommand,
+  createImageCommandFromConfig,
   createRectangleCommand,
   createTextCommandFromConfig,
-  createImageCommandFromConfig,
 } from "../rendering/commands";
 import { parseColor } from "../utils/color";
-import { parseText } from "../utils/text";
-import Pardal, { PardalContext } from "../..";
 import { isEmoji } from "../utils/emoji";
+import { parseText } from "../utils/text";
 
 /**
  * Medir dimensões de texto usando PDFKit
@@ -30,7 +31,7 @@ import { isEmoji } from "../utils/emoji";
 function measureTextDimensions(
   context: PardalContext,
   textContent: string,
-  fontSize: number = 16
+  fontSize = 16
 ): { width: number; height: number } {
   if (!textContent || textContent.length === 0) {
     return { width: 0, height: 0 };
@@ -75,27 +76,22 @@ export function getFontForWord(
     return fonts?.emoji || "NotoEmoji-Regular";
   }
   if (word.bold && word.italic) {
-    return (
-      fonts?.boldItalic || fonts?.bold || fonts?.regular || "Helvetica-Bold"
-    );
-  } else if (word.bold) {
-    return fonts?.bold || fonts?.regular || "Helvetica-Bold";
-  } else if (word.italic) {
-    return fonts?.regularItalic || fonts?.regular || "Helvetica-Oblique";
-  } else {
-    return fonts?.regular || "Helvetica";
+    return fonts?.boldItalic || fonts?.bold || fonts?.regular || "Helvetica-Bold";
   }
+  if (word.bold) {
+    return fonts?.bold || fonts?.regular || "Helvetica-Bold";
+  }
+  if (word.italic) {
+    return fonts?.regularItalic || fonts?.regular || "Helvetica-Oblique";
+  }
+  return fonts?.regular || "Helvetica";
 }
 
 /**
  * Medir palavras individuais em um texto
  * Reimplementado para seguir mais de perto a abordagem do Clay
  */
-export function measureWords(
-  context: PardalContext,
-  text: string,
-  fontSize: number = 16
-): MeasuredWord[] {
+export function measureWords(context: PardalContext, text: string, fontSize = 16): MeasuredWord[] {
   if (!text || text.length === 0) {
     return [];
   }
@@ -154,7 +150,7 @@ export function wrapTextIntoLines(
   text: string,
   words: MeasuredWord[],
   containerWidth: number,
-  fontSize: number = 16
+  fontSize = 16
 ): WrappedTextLine[] {
   if (!text || text.length === 0 || !words || words.length === 0) {
     return [];
@@ -211,10 +207,7 @@ export function wrapTextIntoLines(
           currentLineWidth += firstPart.width;
           currentLine.length += firstPart.length;
           currentLine.dimensions.width += firstPart.width;
-          currentLine.dimensions.height = Math.max(
-            currentLine.dimensions.height,
-            firstPart.height
-          );
+          currentLine.dimensions.height = Math.max(currentLine.dimensions.height, firstPart.height);
         }
 
         // Adicionar a linha atual ao array de linhas
@@ -269,10 +262,7 @@ export function wrapTextIntoLines(
           // Update the length of the line
           currentLine.length += word.length;
           currentLine.dimensions.width += word.width;
-          currentLine.dimensions.height = Math.max(
-            currentLine.dimensions.height,
-            word.height
-          );
+          currentLine.dimensions.height = Math.max(currentLine.dimensions.height, word.height);
         } else {
           // Adiciona a linha atual ao array de linhas
           lines.push(currentLine);
@@ -350,29 +340,25 @@ function processTextWrapping(context: PardalContext): void {
   for (const element of context.layoutElements) {
     if (element.elementType === "text" && element.textConfig) {
       const fontSize = element.textConfig.fontSize || 16;
-      
+
       // Calcular o fator de espaçamento entre linhas
-      const lineSpacingFactor = element.textConfig.lineSpacingFactor !== undefined 
-        ? element.textConfig.lineSpacingFactor 
-        : context.lineSpacingFactor;
-      
+      const lineSpacingFactor =
+        element.textConfig.lineSpacingFactor !== undefined
+          ? element.textConfig.lineSpacingFactor
+          : context.lineSpacingFactor;
+
       // Calcular a altura da linha com o espaçamento
-      const lineHeight = element.textConfig.lineHeight || (fontSize * lineSpacingFactor);
+      const lineHeight = element.textConfig.lineHeight || fontSize * lineSpacingFactor;
 
       // Medir as palavras se ainda não foram medidas
       if (!element.measuredWords) {
-        element.measuredWords = measureWords(
-          context,
-          element.textConfig.content,
-          fontSize
-        );
+        element.measuredWords = measureWords(context, element.textConfig.content, fontSize);
       }
 
       // Obter a largura disponível para o texto, considerando o padding do elemento
       const availableWidth =
         element.dimensions.width -
-        (element.layoutConfig.padding.left +
-          element.layoutConfig.padding.right);
+        (element.layoutConfig.padding.left + element.layoutConfig.padding.right);
 
       // Quebrar o texto em linhas com base na largura disponível (container)
       const wrappedLines = wrapTextIntoLines(
@@ -388,15 +374,15 @@ function processTextWrapping(context: PardalContext): void {
 
       // Recalcular a altura com base nas linhas quebradas, incluindo o espaçamento
       let totalHeight = 0;
-      
+
       if (element.wrappedTextLines.length > 0) {
         // Para cada linha, adicionar sua altura
         for (let i = 0; i < element.wrappedTextLines.length; i++) {
           const line = element.wrappedTextLines[i];
-          
+
           // Adicionar a altura da linha
           totalHeight += line.dimensions.height;
-          
+
           // Se não for a última linha, adicionar o espaçamento adicional
           if (i < element.wrappedTextLines.length - 1) {
             // Adicionar o espaço extra entre as linhas
@@ -406,8 +392,7 @@ function processTextWrapping(context: PardalContext): void {
       }
 
       // Adicionar padding vertical ao total da altura
-      totalHeight +=
-        element.layoutConfig.padding.top + element.layoutConfig.padding.bottom;
+      totalHeight += element.layoutConfig.padding.top + element.layoutConfig.padding.bottom;
 
       // Ajustar a altura do elemento com base no texto quebrado
       element.dimensions.height = totalHeight;
@@ -416,32 +401,23 @@ function processTextWrapping(context: PardalContext): void {
       if (!element.minDimensions) {
         element.minDimensions = { width: 0, height: 0 };
       }
-      element.minDimensions.height = Math.max(
-        element.minDimensions.height,
-        totalHeight
-      );
+      element.minDimensions.height = Math.max(element.minDimensions.height, totalHeight);
 
       // Propagar a altura para o elemento pai se ele tiver sizing FIT
       const parentElement = findParentElement(context, element);
-      if (
-        parentElement &&
-        parentElement.layoutConfig.sizing.height.type === SizingType.FIT
-      ) {
+      if (parentElement && parentElement.layoutConfig.sizing.height.type === SizingType.FIT) {
         // Recalcular altura do pai considerando todos os filhos
         let parentTotalHeight = 0;
         for (const child of parentElement.children) {
           parentTotalHeight += child.dimensions.height;
-          if (
-            child !== parentElement.children[parentElement.children.length - 1]
-          ) {
+          if (child !== parentElement.children[parentElement.children.length - 1]) {
             parentTotalHeight += parentElement.layoutConfig.childGap;
           }
         }
 
         // Adicionar padding do pai
         parentTotalHeight +=
-          parentElement.layoutConfig.padding.top +
-          parentElement.layoutConfig.padding.bottom;
+          parentElement.layoutConfig.padding.top + parentElement.layoutConfig.padding.bottom;
 
         // Atualizar dimensões do pai
         parentElement.dimensions.height = parentTotalHeight;
@@ -466,10 +442,7 @@ function processTextWrapping(context: PardalContext): void {
 /**
  * Encontrar o elemento pai de um elemento
  */
-function findParentElement(
-  context: PardalContext,
-  element: LayoutElement
-): LayoutElement | null {
+function findParentElement(context: PardalContext, element: LayoutElement): LayoutElement | null {
   for (const potentialParent of context.layoutElements) {
     if (potentialParent.children.includes(element)) {
       return potentialParent;
@@ -487,10 +460,7 @@ function initializeRootElements(context: PardalContext): void {
   for (const element of context.layoutElements) {
     if (!context.openLayoutElementStack.includes(element)) {
       if (context.debugMode) {
-        context.logger.debug(
-          "Definindo dimensões do elemento raiz:",
-          element.id
-        );
+        context.logger.debug("Definindo dimensões do elemento raiz:", element.id);
       }
 
       // Elemento raiz - inicializar com dimensões padrão
@@ -541,10 +511,7 @@ function calculateMinimumDimensions(context: PardalContext): void {
  * Função recursiva para calcular dimensões mínimas de um elemento e seus filhos
  * Implementa um algoritmo DFS para garantir que os filhos sejam processados antes dos pais
  */
-function calculateElementMinimumDimensions(
-  context: PardalContext,
-  element: LayoutElement
-): void {
+function calculateElementMinimumDimensions(context: PardalContext, element: LayoutElement): void {
   // Primeiro processar todos os filhos
   for (const child of element.children) {
     calculateElementMinimumDimensions(context, child);
@@ -558,10 +525,7 @@ function calculateElementMinimumDimensions(
  * Calcular o tamanho "fit" de um elemento com base em seus filhos
  * Isto é usado para elementos que precisam se ajustar ao seu conteúdo
  */
-function calculateElementFitSize(
-  context: PardalContext,
-  element: LayoutElement
-): void {
+function calculateElementFitSize(context: PardalContext, element: LayoutElement): void {
   const layoutConfig = element.layoutConfig;
   const isRowLayout = layoutConfig.layoutDirection === Direction.ROW;
 
@@ -570,14 +534,15 @@ function calculateElementFitSize(
     // Obter texto e configurações
     const textContent = element.textConfig.content || "";
     const fontSize = element.textConfig.fontSize || 16;
-    
+
     // Calcular o fator de espaçamento entre linhas
-    const lineSpacingFactor = element.textConfig.lineSpacingFactor !== undefined 
-      ? element.textConfig.lineSpacingFactor 
-      : context.lineSpacingFactor;
-    
+    const lineSpacingFactor =
+      element.textConfig.lineSpacingFactor !== undefined
+        ? element.textConfig.lineSpacingFactor
+        : context.lineSpacingFactor;
+
     // Calcular lineHeight
-    const lineHeight = element.textConfig.lineHeight || (fontSize * lineSpacingFactor);
+    const lineHeight = element.textConfig.lineHeight || fontSize * lineSpacingFactor;
 
     // Medir palavras
     const words = measureWords(context, textContent, fontSize);
@@ -591,8 +556,7 @@ function calculateElementFitSize(
         context,
         textContent,
         words,
-        element.dimensions.width -
-          (layoutConfig.padding.left + layoutConfig.padding.right),
+        element.dimensions.width - (layoutConfig.padding.left + layoutConfig.padding.right),
         fontSize
       );
 
@@ -601,14 +565,14 @@ function calculateElementFitSize(
 
       // Calcular altura total do texto quebrado, incluindo o espaçamento entre linhas
       let totalHeight = 0;
-      
+
       // Para cada linha, adicionar sua altura
       for (let i = 0; i < wrappedLines.length; i++) {
         const line = wrappedLines[i];
-        
+
         // Adicionar a altura da linha
         totalHeight += line.dimensions.height;
-        
+
         // Se não for a última linha, adicionar o espaçamento adicional
         if (i < wrappedLines.length - 1) {
           // Adicionar o espaço extra entre as linhas
@@ -619,9 +583,7 @@ function calculateElementFitSize(
       // Definir dimensões com base nas linhas quebradas
       element.minDimensions = {
         width: element.dimensions.width,
-        height:
-          totalHeight +
-          (layoutConfig.padding.top + layoutConfig.padding.bottom),
+        height: totalHeight + (layoutConfig.padding.top + layoutConfig.padding.bottom),
       };
 
       // Atualizar as dimensões do elemento
@@ -629,11 +591,7 @@ function calculateElementFitSize(
     } else {
       // Sem largura definida, usamos a largura natural do texto
       // Medir o texto completo para obter a largura máxima
-      const { width, height } = measureTextDimensions(
-        context,
-        textContent,
-        fontSize
-      );
+      const { width, height } = measureTextDimensions(context, textContent, fontSize);
 
       // Criar linha única como fallback
       if (!element.wrappedTextLines) {
@@ -649,8 +607,7 @@ function calculateElementFitSize(
 
       element.minDimensions = {
         width: width + (layoutConfig.padding.left + layoutConfig.padding.right),
-        height:
-          height + (layoutConfig.padding.top + layoutConfig.padding.bottom),
+        height: height + (layoutConfig.padding.top + layoutConfig.padding.bottom),
       };
 
       // Atualizar dimensões do elemento
@@ -700,15 +657,12 @@ function calculateElementFitSize(
   // Verificar se é necessário recalcular as dimensões dos filhos
   const needsChildDimensionsRecalculation = element.children.some(
     (child) =>
-      !child.minDimensions ||
-      (child.minDimensions.width === 0 && child.minDimensions.height === 0)
+      !child.minDimensions || (child.minDimensions.width === 0 && child.minDimensions.height === 0)
   );
 
   if (needsChildDimensionsRecalculation) {
     if (context.debugMode) {
-      context.logger.debug(
-        `Recalculando dimensões dos filhos para o elemento ${element.id}`
-      );
+      context.logger.debug(`Recalculando dimensões dos filhos para o elemento ${element.id}`);
     }
     for (const child of element.children) {
       if (!child.minDimensions) {
@@ -736,14 +690,12 @@ function calculateElementFitSize(
       // Usar dimensões reais para filhos com tamanho fixo/definido
       const childWidth =
         child.layoutConfig.sizing.width.type === SizingType.FIXED
-          ? child.layoutConfig.sizing.width.size.fixed ||
-            child.minDimensions.width
+          ? child.layoutConfig.sizing.width.size.fixed || child.minDimensions.width
           : child.minDimensions.width;
 
       const childHeight =
         child.layoutConfig.sizing.height.type === SizingType.FIXED
-          ? child.layoutConfig.sizing.height.size.fixed ||
-            child.minDimensions.height
+          ? child.layoutConfig.sizing.height.size.fixed || child.minDimensions.height
           : child.minDimensions.height;
 
       totalWidth += childWidth;
@@ -772,14 +724,12 @@ function calculateElementFitSize(
       // Usar dimensões reais para filhos com tamanho fixo/definido
       const childWidth =
         child.layoutConfig.sizing.width.type === SizingType.FIXED
-          ? child.layoutConfig.sizing.width.size.fixed ||
-            child.minDimensions.width
+          ? child.layoutConfig.sizing.width.size.fixed || child.minDimensions.width
           : child.minDimensions.width;
 
       const childHeight =
         child.layoutConfig.sizing.height.type === SizingType.FIXED
-          ? child.layoutConfig.sizing.height.size.fixed ||
-            child.minDimensions.height
+          ? child.layoutConfig.sizing.height.size.fixed || child.minDimensions.height
           : child.minDimensions.height;
 
       totalHeight += childHeight;
@@ -794,21 +744,15 @@ function calculateElementFitSize(
 
   // Definir dimensões mínimas incluindo padding
   element.minDimensions = {
-    width: isRowLayout
-      ? totalWidth + totalHorizontalPadding
-      : maxWidth + totalHorizontalPadding,
-    height: isRowLayout
-      ? maxHeight + totalVerticalPadding
-      : totalHeight + totalVerticalPadding,
+    width: isRowLayout ? totalWidth + totalHorizontalPadding : maxWidth + totalHorizontalPadding,
+    height: isRowLayout ? maxHeight + totalVerticalPadding : totalHeight + totalVerticalPadding,
   };
 
   if (context.debugMode) {
     context.logger.debug(
       `Elemento ${element.id}: minDimensions calculado: ${
         element.minDimensions.width
-      }x${element.minDimensions.height} (direção: ${
-        isRowLayout ? "ROW" : "COLUMN"
-      })`
+      }x${element.minDimensions.height} (direção: ${isRowLayout ? "ROW" : "COLUMN"})`
     );
   }
 
@@ -858,10 +802,7 @@ function applyFitSizingConstraints(element: LayoutElement): void {
  * Distribuir espaço ao longo de um eixo (implementação baseada no Clay)
  * Esta função faz uma travessia top-down para distribuir espaço
  */
-function sizeContainersAlongAxis(
-  context: PardalContext,
-  isXAxis: boolean
-): void {
+function sizeContainersAlongAxis(context: PardalContext, isXAxis: boolean): void {
   // Encontrar os elementos raiz
   const rootElements: LayoutElement[] = [];
   for (const element of context.layoutElements) {
@@ -886,12 +827,8 @@ function distributeSpaceToChildren(
   isXAxis: boolean
 ): void {
   const layoutConfig = parent.layoutConfig;
-  const sizingAxis = isXAxis
-    ? layoutConfig.sizing.width
-    : layoutConfig.sizing.height;
-  const parentSize = isXAxis
-    ? parent.dimensions.width
-    : parent.dimensions.height;
+  const sizingAxis = isXAxis ? layoutConfig.sizing.width : layoutConfig.sizing.height;
+  const parentSize = isXAxis ? parent.dimensions.width : parent.dimensions.height;
   const parentPadding = isXAxis
     ? layoutConfig.padding.left + layoutConfig.padding.right
     : layoutConfig.padding.top + layoutConfig.padding.bottom;
@@ -904,9 +841,7 @@ function distributeSpaceToChildren(
   // Se for um elemento fit, ajustar as dimensões precisamente com base nos filhos
   if (sizingAxis.type === SizingType.FIT && parent.minDimensions) {
     // Atualizar a dimensão com base no cálculo preciso de tamanho mínimo
-    const minSize = isXAxis
-      ? parent.minDimensions.width
-      : parent.minDimensions.height;
+    const minSize = isXAxis ? parent.minDimensions.width : parent.minDimensions.height;
 
     if (minSize > 0) {
       if (isXAxis) {
@@ -937,8 +872,8 @@ function distributeSpaceToChildren(
   }
 
   // Filtrando elementos que não são posicionados absolutamente
-  const nonAbsoluteChildren = parent.children.filter(child => !child.absolute);
-  
+  const nonAbsoluteChildren = parent.children.filter((child) => !child.absolute);
+
   // Se não houver filhos não absolutos, não há nada a distribuir
   if (nonAbsoluteChildren.length === 0) {
     return;
@@ -996,9 +931,7 @@ function distributeSpaceToChildren(
       }
     } else if (childSizing.type === SizingType.FIT) {
       // Para elementos FIT, usar o tamanho mínimo calculado anteriormente
-      const fitSize = isXAxis
-        ? child.minDimensions.width
-        : child.minDimensions.height;
+      const fitSize = isXAxis ? child.minDimensions.width : child.minDimensions.height;
 
       if (isXAxis) {
         child.dimensions.width = fitSize;
@@ -1015,10 +948,7 @@ function distributeSpaceToChildren(
   }
 
   // 3. Distribuir espaço restante para elementos GROW
-  const remainingSpace = Math.max(
-    0,
-    availableSpace - totalFixedAndPercentSpace
-  );
+  const remainingSpace = Math.max(0, availableSpace - totalFixedAndPercentSpace);
 
   if (growContainerCount > 0 && remainingSpace > 0) {
     const spacePerGrowElement = remainingSpace / growContainerCount;
@@ -1032,10 +962,7 @@ function distributeSpaceToChildren(
         // Aplicar tamanho GROW, respeitando min/max
         const minSize = childSizing.size.minMax?.min || DEFAULT_MIN_SIZE;
         const maxSize = childSizing.size.minMax?.max || DEFAULT_MAX_SIZE;
-        const growSize = Math.max(
-          Math.min(spacePerGrowElement, maxSize),
-          minSize
-        );
+        const growSize = Math.max(Math.min(spacePerGrowElement, maxSize), minSize);
 
         if (isXAxis) {
           child.dimensions.width = growSize;
@@ -1076,9 +1003,9 @@ function distributeSpaceToChildren(
   for (const child of nonAbsoluteChildren) {
     distributeSpaceToChildren(context, child, isXAxis);
   }
-  
+
   // Processar também os filhos com posicionamento absoluto
-  const absoluteChildren = parent.children.filter(child => child.absolute);
+  const absoluteChildren = parent.children.filter((child) => child.absolute);
   for (const child of absoluteChildren) {
     distributeSpaceToChildren(context, child, isXAxis);
   }
@@ -1128,7 +1055,7 @@ function generateRenderCommands(pardal: Pardal): void {
 
     // Verificar tipo de elemento e gerar comando específico
     switch (element.elementType) {
-      case "rectangle":
+      case "rectangle": {
         const rectCmd = createRectangleCommand(
           element.pageId,
           boundingBox,
@@ -1137,15 +1064,13 @@ function generateRenderCommands(pardal: Pardal): void {
         );
         pardal.addRenderCommand(rectCmd);
         break;
+      }
 
-      case "circle":
-        const circleCmd = createCircleCommand(
-          element.pageId,
-          boundingBox,
-          element.backgroundColor
-        );
+      case "circle": {
+        const circleCmd = createCircleCommand(element.pageId, boundingBox, element.backgroundColor);
         pardal.addRenderCommand(circleCmd);
         break;
+      }
 
       case "text":
         if (element.textConfig && element.wrappedTextLines) {
@@ -1159,18 +1084,14 @@ function generateRenderCommands(pardal: Pardal): void {
           }
 
           if (allWords.length > 0) {
-            const textCmd = createTextCommandFromConfig(
-              element.pageId,
-              boundingBox,
-              {
-                content: allWords,
-                color: typeof color === "string" ? parseColor(color) : color,
-                fontId: textConfig.fontId,
-                fontSize: textConfig.fontSize,
-                letterSpacing: textConfig.letterSpacing,
-                lineHeight: textConfig.lineHeight,
-              }
-            );
+            const textCmd = createTextCommandFromConfig(element.pageId, boundingBox, {
+              content: allWords,
+              color: typeof color === "string" ? parseColor(color) : color,
+              fontId: textConfig.fontId,
+              fontSize: textConfig.fontSize,
+              letterSpacing: textConfig.letterSpacing,
+              lineHeight: textConfig.lineHeight,
+            });
             pardal.addRenderCommand(textCmd);
           }
         }
@@ -1180,10 +1101,7 @@ function generateRenderCommands(pardal: Pardal): void {
       default:
         if (element.elementType === "image" && element.imageConfig) {
           if (currentContext.debugMode) {
-            currentContext.logger.debug(
-              "Processando elemento de imagem:",
-              element.id
-            );
+            currentContext.logger.debug("Processando elemento de imagem:", element.id);
           }
           const imageCmd = createImageCommandFromConfig(
             element.pageId,
@@ -1192,27 +1110,19 @@ function generateRenderCommands(pardal: Pardal): void {
               source: element.imageConfig.source,
               fit: element.imageConfig.fit,
               opacity:
-                element.imageConfig.opacity !== undefined
-                  ? element.imageConfig.opacity
-                  : 1.0,
+                element.imageConfig.opacity !== undefined ? element.imageConfig.opacity : 1.0,
               cornerRadius: element.imageConfig.cornerRadius,
               rounded: element.imageConfig.rounded,
             },
             0
           );
           if (currentContext.debugMode) {
-            currentContext.logger.debug(
-              "Comando de renderização de imagem criado:",
-              element.id
-            );
+            currentContext.logger.debug("Comando de renderização de imagem criado:", element.id);
           }
           pardal.addRenderCommand(imageCmd);
         } else if (element.elementType === "image") {
           if (currentContext.debugMode) {
-            currentContext.logger.debug(
-              "ERRO: Elemento de imagem sem imageConfig:",
-              element.id
-            );
+            currentContext.logger.debug("ERRO: Elemento de imagem sem imageConfig:", element.id);
           }
         }
         break;
@@ -1231,11 +1141,7 @@ function generateRenderCommands(pardal: Pardal): void {
  * @param element Elemento a ser posicionado
  * @param position Posição inicial do elemento
  */
-function positionElement(
-  pardal: Pardal,
-  element: LayoutElement,
-  position: Vector2
-): void {
+function positionElement(pardal: Pardal, element: LayoutElement, position: Vector2): void {
   const currentContext = pardal.getContext();
 
   // Verificar se este elemento já foi processado
@@ -1247,10 +1153,7 @@ function positionElement(
   currentContext.processedElements.add(element.id);
 
   // Para elementos com Sizing.fit(), assegurar que as dimensões corretas sejam usadas
-  if (
-    element.layoutConfig.sizing.height.type === SizingType.FIT &&
-    element.minDimensions
-  ) {
+  if (element.layoutConfig.sizing.height.type === SizingType.FIT && element.minDimensions) {
     if (element.dimensions.height < element.minDimensions.height) {
       element.dimensions.height = element.minDimensions.height;
       if (currentContext.debugMode) {
@@ -1261,10 +1164,7 @@ function positionElement(
     }
   }
 
-  if (
-    element.layoutConfig.sizing.width.type === SizingType.FIT &&
-    element.minDimensions
-  ) {
+  if (element.layoutConfig.sizing.width.type === SizingType.FIT && element.minDimensions) {
     if (element.dimensions.width < element.minDimensions.width) {
       element.dimensions.width = element.minDimensions.width;
       if (currentContext.debugMode) {
@@ -1280,9 +1180,7 @@ function positionElement(
   const height = element.dimensions.height;
 
   // Se o elemento já tem uma posição absoluta definida, usar ela em vez da posição calculada
-  const finalPosition = element.absolute && element.position 
-    ? element.position 
-    : position;
+  const finalPosition = element.absolute && element.position ? element.position : position;
 
   // Criar bounding box para este elemento
   const boundingBox = {
@@ -1294,7 +1192,7 @@ function positionElement(
 
   if (currentContext.debugMode) {
     currentContext.logger.debug(
-      `Posicionando elemento ${element.id} em (${finalPosition.x}, ${finalPosition.y}) com tamanho ${width}x${height}${element.absolute ? ' (absoluto)' : ''}`
+      `Posicionando elemento ${element.id} em (${finalPosition.x}, ${finalPosition.y}) com tamanho ${width}x${height}${element.absolute ? " (absoluto)" : ""}`
     );
   }
 
@@ -1310,23 +1208,14 @@ function positionElement(
       )
     );
     if (currentContext.debugMode) {
-      currentContext.logger.debug(
-        `  Adicionando comando RECTANGLE para elemento ${element.id}`
-      );
+      currentContext.logger.debug(`  Adicionando comando RECTANGLE para elemento ${element.id}`);
     }
   } else if (element.elementType === "circle") {
     pardal.addRenderCommand(
-      createCircleCommand(
-        element.pageId,
-        boundingBox,
-        element.backgroundColor,
-        0
-      )
+      createCircleCommand(element.pageId, boundingBox, element.backgroundColor, 0)
     );
     if (currentContext.debugMode) {
-      currentContext.logger.debug(
-        `  Adicionando comando CIRCLE para elemento ${element.id}`
-      );
+      currentContext.logger.debug(`  Adicionando comando CIRCLE para elemento ${element.id}`);
     }
   } else if (element.elementType === "image" && element.imageConfig) {
     // Processar elemento de imagem
@@ -1337,10 +1226,7 @@ function positionElement(
         {
           source: element.imageConfig.source,
           fit: element.imageConfig.fit,
-          opacity:
-            element.imageConfig.opacity !== undefined
-              ? element.imageConfig.opacity
-              : 1.0,
+          opacity: element.imageConfig.opacity !== undefined ? element.imageConfig.opacity : 1.0,
           cornerRadius: element.imageConfig.cornerRadius,
           rounded: element.imageConfig.rounded,
         },
@@ -1348,9 +1234,7 @@ function positionElement(
       )
     );
     if (currentContext.debugMode) {
-      currentContext.logger.debug(
-        `  Adicionando comando IMAGE para elemento ${element.id}`
-      );
+      currentContext.logger.debug(`  Adicionando comando IMAGE para elemento ${element.id}`);
     }
   } else if (element.elementType === "text" && element.textConfig) {
     // Processar elemento de texto
@@ -1361,15 +1245,15 @@ function positionElement(
 
     const fontSize = element.textConfig.fontSize || 16;
     // Usar o lineSpacingFactor específico do elemento ou o global do contexto
-    const lineSpacingFactor = element.textConfig.lineSpacingFactor !== undefined 
-      ? element.textConfig.lineSpacingFactor 
-      : currentContext.lineSpacingFactor;
-    
+    const lineSpacingFactor =
+      element.textConfig.lineSpacingFactor !== undefined
+        ? element.textConfig.lineSpacingFactor
+        : currentContext.lineSpacingFactor;
+
     // Calcular a altura da linha com o espaçamento
-    const lineHeight = element.textConfig.lineHeight || (fontSize * lineSpacingFactor);
-    
-    const textAlignment =
-      element.textConfig.textAlignment || TextAlignment.LEFT;
+    const lineHeight = element.textConfig.lineHeight || fontSize * lineSpacingFactor;
+
+    const textAlignment = element.textConfig.textAlignment || TextAlignment.LEFT;
 
     // Se não temos linhas de texto quebradas, precisamos calculá-las agora
     if (!element.wrappedTextLines || element.wrappedTextLines.length === 0) {
@@ -1381,11 +1265,7 @@ function positionElement(
 
       // Se não temos palavras medidas, medimos agora
       if (!element.measuredWords) {
-        element.measuredWords = measureWords(
-          currentContext,
-          element.textConfig.content,
-          fontSize
-        );
+        element.measuredWords = measureWords(currentContext, element.textConfig.content, fontSize);
       }
 
       // Quebrar texto em linhas
@@ -1394,22 +1274,21 @@ function positionElement(
         element.textConfig.content,
         element.measuredWords,
         boundingBox.width -
-          (element.layoutConfig.padding.left +
-            element.layoutConfig.padding.right),
+          (element.layoutConfig.padding.left + element.layoutConfig.padding.right),
         fontSize
       );
 
       // Recalcular a altura com base nas linhas quebradas, incluindo o espaçamento
       let totalHeight = 0;
-      
+
       if (element.wrappedTextLines.length > 0) {
         // Para cada linha, adicionar sua altura
         for (let i = 0; i < element.wrappedTextLines.length; i++) {
           const line = element.wrappedTextLines[i];
-          
+
           // Adicionar a altura da linha
           totalHeight += line.dimensions.height;
-          
+
           // Se não for a última linha, adicionar o espaçamento adicional
           if (i < element.wrappedTextLines.length - 1) {
             // Adicionar o espaço extra entre as linhas
@@ -1419,8 +1298,7 @@ function positionElement(
       }
 
       // Adicionar padding vertical ao total da altura
-      totalHeight +=
-        element.layoutConfig.padding.top + element.layoutConfig.padding.bottom;
+      totalHeight += element.layoutConfig.padding.top + element.layoutConfig.padding.bottom;
 
       // Ajustar a altura do elemento com base no texto quebrado
       element.dimensions.height = totalHeight;
@@ -1449,29 +1327,26 @@ function positionElement(
 
       // Aplicar alinhamento vertical se necessário (top, center, bottom)
       let contentHeight = 0;
-      
+
       // Calcular a altura total do conteúdo incluindo o espaçamento entre linhas
       if (element.wrappedTextLines.length > 0) {
         for (let i = 0; i < element.wrappedTextLines.length; i++) {
           const line = element.wrappedTextLines[i];
           contentHeight += line.dimensions.height;
-          
+
           // Adicionar o espaçamento entre linhas (exceto para a última linha)
           if (i < element.wrappedTextLines.length - 1) {
             contentHeight += lineHeight - line.dimensions.height;
           }
         }
       }
-      
-      const availableHeight =
-        boundingBox.height - (linePadding.top + linePadding.bottom);
+
+      const availableHeight = boundingBox.height - (linePadding.top + linePadding.bottom);
       const extraHeight = Math.max(0, availableHeight - contentHeight);
 
       if (element.layoutConfig.childAlignment.y === LayoutAlignmentY.CENTER) {
         yOffset += extraHeight / 2;
-      } else if (
-        element.layoutConfig.childAlignment.y === LayoutAlignmentY.BOTTOM
-      ) {
+      } else if (element.layoutConfig.childAlignment.y === LayoutAlignmentY.BOTTOM) {
         yOffset += extraHeight;
       }
 
@@ -1484,15 +1359,12 @@ function positionElement(
 
         // Calcular o alinhamento horizontal
         let xOffset = linePadding.left;
-        const availableWidth =
-          boundingBox.width - (linePadding.left + linePadding.right);
+        const availableWidth = boundingBox.width - (linePadding.left + linePadding.right);
 
         if (textAlignment === TextAlignment.CENTER) {
-          xOffset =
-            linePadding.left + (availableWidth - line.dimensions.width) / 2;
+          xOffset = linePadding.left + (availableWidth - line.dimensions.width) / 2;
         } else if (textAlignment === TextAlignment.RIGHT) {
-          xOffset =
-            boundingBox.width - linePadding.right - line.dimensions.width;
+          xOffset = boundingBox.width - linePadding.right - line.dimensions.width;
         }
 
         // Criar bounding box para esta linha
@@ -1531,16 +1403,12 @@ function positionElement(
       }
     } else {
       // Fallback para texto sem linhas quebradas (não deve acontecer normalmente)
-      currentContext.logger.warn(
-        `  Elemento de texto ${element.id} não possui linhas quebradas!`
-      );
+      currentContext.logger.warn(`  Elemento de texto ${element.id} não possui linhas quebradas!`);
 
       // Garantir que as dimensões do texto estejam corretas
       if (boundingBox.width <= 0 || boundingBox.height <= 0) {
         if (currentContext.debugMode) {
-          currentContext.logger.debug(
-            `Detectadas dimensões inválidas para texto, recalculando...`
-          );
+          currentContext.logger.debug("Detectadas dimensões inválidas para texto, recalculando...");
         }
         const { width, height } = measureTextDimensions(
           currentContext,
@@ -1579,9 +1447,7 @@ function positionElement(
         )
       );
       if (currentContext.debugMode) {
-        currentContext.logger.debug(
-          `  Adicionando comando TEXT para elemento ${element.id}`
-        );
+        currentContext.logger.debug(`  Adicionando comando TEXT para elemento ${element.id}`);
       }
     }
   }
@@ -1648,10 +1514,7 @@ function positionElement(
   // Aplicar alinhamento horizontal para o grupo de filhos
   if (element.layoutConfig.layoutDirection === Direction.ROW) {
     // No layout em linha, alinhamento horizontal afeta posição inicial X
-    if (
-      element.layoutConfig.childAlignment.x === LayoutAlignmentX.CENTER &&
-      availableWidth > 0
-    ) {
+    if (element.layoutConfig.childAlignment.x === LayoutAlignmentX.CENTER && availableWidth > 0) {
       childStartX += availableWidth / 2;
     } else if (
       element.layoutConfig.childAlignment.x === LayoutAlignmentX.RIGHT &&
@@ -1661,10 +1524,7 @@ function positionElement(
     }
   } else {
     // No layout em coluna, alinhamento vertical afeta posição inicial Y
-    if (
-      element.layoutConfig.childAlignment.y === LayoutAlignmentY.CENTER &&
-      availableHeight > 0
-    ) {
+    if (element.layoutConfig.childAlignment.y === LayoutAlignmentY.CENTER && availableHeight > 0) {
       childStartY += availableHeight / 2;
     } else if (
       element.layoutConfig.childAlignment.y === LayoutAlignmentY.BOTTOM &&
@@ -1704,9 +1564,7 @@ function positionElement(
         if (childExtraHeight > 0) {
           childY += childExtraHeight / 2;
         }
-      } else if (
-        element.layoutConfig.childAlignment.y === LayoutAlignmentY.BOTTOM
-      ) {
+      } else if (element.layoutConfig.childAlignment.y === LayoutAlignmentY.BOTTOM) {
         const childExtraHeight =
           height -
           element.layoutConfig.padding.top -
@@ -1734,9 +1592,7 @@ function positionElement(
         if (childExtraWidth > 0) {
           childX += childExtraWidth / 2;
         }
-      } else if (
-        element.layoutConfig.childAlignment.x === LayoutAlignmentX.RIGHT
-      ) {
+      } else if (element.layoutConfig.childAlignment.x === LayoutAlignmentX.RIGHT) {
         const childExtraWidth =
           width -
           element.layoutConfig.padding.left -

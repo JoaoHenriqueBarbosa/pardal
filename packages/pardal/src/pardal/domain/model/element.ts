@@ -1,19 +1,34 @@
-import { ChildAlignment, Color, CornerRadius, Direction, ElementType, LayoutConfig, Padding, SizingAxis, TextElementConfig, TextAlignment, TextWrapMode, ImageElementConfig, ImageFitMode, Vector2 } from './types';
+import type {
+  ChildAlignment,
+  Color,
+  CornerRadius,
+  Direction,
+  ElementType,
+  ImageElementConfig,
+  ImageFitMode,
+  LayoutConfig,
+  Padding,
+  SizingAxis,
+  TextAlignment,
+  TextElementConfig,
+  TextWrapMode,
+  Vector2,
+} from "./types";
 
 // Interfaces para processamento de texto
 export interface MeasuredWord {
   text: string;
-  startOffset: number;  // Posição inicial no texto original
-  length: number;       // Comprimento da palavra
-  width: number;        // Largura calculada
-  height: number;       // Altura calculada
-  next?: number;        // Índice da próxima palavra
-  bold?: boolean;       // Indica se a palavra é negrito
-  italic?: boolean;     // Indica se a palavra é itálico
+  startOffset: number; // Posição inicial no texto original
+  length: number; // Comprimento da palavra
+  width: number; // Largura calculada
+  height: number; // Altura calculada
+  next?: number; // Índice da próxima palavra
+  bold?: boolean; // Indica se a palavra é negrito
+  italic?: boolean; // Indica se a palavra é itálico
 }
 
 export interface WrappedTextLine {
-  dimensions: { width: number, height: number };
+  dimensions: { width: number; height: number };
   content: MeasuredWord[];
   startOffset: number;
   length: number;
@@ -34,15 +49,15 @@ export interface ElementDeclaration {
   elementType?: ElementType;
   direction?: Direction;
   childAlignment?: ChildAlignment;
-  
+
   // Propriedades para posicionamento absoluto
   x?: number;
   y?: number;
-  absolute?: boolean;  // Quando true, usa posicionamento absoluto
-  
+  absolute?: boolean; // Quando true, usa posicionamento absoluto
+
   // Propriedades de texto
   text?: TextElementConfig | string; // Conteúdo do texto ou configuração completa (para compatibilidade)
-  
+
   // Propriedades individuais de formatação de texto
   // Estas podem ser usadas diretamente no objeto principal de configuração
   fontSize?: number;
@@ -56,7 +71,7 @@ export interface ElementDeclaration {
   fontFamily?: string;
   fontWeight?: string;
   fontStyle?: string;
-  
+
   // Propriedades de imagem
   source?: string; // Caminho da imagem ou dados em base64
   fit?: ImageFitMode; // Modo de ajuste da imagem
@@ -65,7 +80,7 @@ export interface ElementDeclaration {
 }
 
 // Elemento de layout (entidade de domínio)
-import { Dimensions } from './types';
+import type { Dimensions } from "./types";
 
 export interface LayoutElement {
   id: string;
@@ -73,8 +88,8 @@ export interface LayoutElement {
   children: LayoutElement[];
   dimensions: Dimensions;
   minDimensions: Dimensions;
-  position?: Vector2;  // Posição do elemento no layout (x, y)
-  absolute?: boolean;  // Indica se o elemento usa posicionamento absoluto
+  position?: Vector2; // Posição do elemento no layout (x, y)
+  absolute?: boolean; // Indica se o elemento usa posicionamento absoluto
   layoutConfig: LayoutConfig;
   backgroundColor: Color;
   cornerRadius?: CornerRadius;
@@ -95,7 +110,7 @@ export const idCounters: Record<string, number> = {
   column: 0,
   element: 0,
   rectangle: 0,
-  image: 0
+  image: 0,
 };
 
 // Função para gerar um ID automático
@@ -109,8 +124,8 @@ export function ensureId(config: ElementDeclaration, type: string): ElementDecla
   if (!config.id) {
     return {
       ...config,
-      id: generateId(type)
+      id: generateId(type),
     };
   }
   return config;
-} 
+}

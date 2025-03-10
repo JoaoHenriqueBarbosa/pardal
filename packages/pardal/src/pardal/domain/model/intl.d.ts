@@ -1,6 +1,6 @@
 declare namespace Intl {
   class Segmenter {
-    constructor(locale: string, options?: { granularity: 'grapheme' | 'word' | 'sentence' });
+    constructor(locale: string, options?: { granularity: "grapheme" | "word" | "sentence" });
     segment(input: string): Segments;
   }
 
@@ -12,6 +12,9 @@ declare namespace Intl {
 // Add these to make the types available at the module level
 interface Intl {
   Segmenter: {
-    new (locale: string, options?: { granularity: 'grapheme' | 'word' | 'sentence' }): Intl.Segmenter;
+    new (
+      locale: string,
+      options?: { granularity: "grapheme" | "word" | "sentence" }
+    ): Intl.Segmenter;
   };
-} 
+}

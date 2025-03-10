@@ -3,9 +3,7 @@
   "version": "0.1.5",
   "description": "Monorepo para Pardal (PDF Automatic Rendering Dynamic Access Library)",
   "private": true,
-  "workspaces": [
-    "packages/*"
-  ],
+  "workspaces": ["packages/*"],
   "type": "module",
   "scripts": {
     "dev:lib": "bun run --cwd packages/pardal dev",
@@ -16,9 +14,15 @@
     "build:server": "bun run --cwd packages/server-demo build",
     "build": "bun run build:lib && bun run build:web && bun run build:server",
     "publish": "cd packages/pardal && npm publish",
-    "test": "bun run --cwd packages/pardal test"
+    "test": "bun run --cwd packages/pardal test",
+    "lint": "bunx biome lint",
+    "format": "bunx biome format --write",
+    "check": "bunx biome check",
+    "fix": "bunx biome check --write",
+    "fix:unsafe": "bunx biome check --write --unsafe"
   },
   "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
     "typescript": "~5.7.2"
   },
   "author": "",

@@ -1,4 +1,4 @@
-import type PDFKit from 'pdfkit';
+import type PDFKit from "pdfkit";
 
 /**
  * Tipo para representar um documento PDF
@@ -11,7 +11,7 @@ export type PDFDocument = typeof PDFKit;
  * Interface para a factory de PDFKit
  */
 export interface PDFKitFactory {
-  createDocument(options?: any): PDFDocument;
+  createDocument(options?: PDFKit.PDFDocumentOptions): PDFDocument;
 }
 
 /**
@@ -19,18 +19,17 @@ export interface PDFKitFactory {
  * Essa implementação lida com ambientes Node.js e browser
  */
 export class DefaultPDFKitFactory implements PDFKitFactory {
-  createDocument(options?: any): PDFDocument {
+  createDocument(options?: PDFKit.PDFDocumentOptions): PDFDocument {
     const PDFKit = this.getPDFKit();
     return new PDFKit(options);
   }
-  
+
   private getPDFKit(): typeof PDFKit {
-    if (typeof window === 'undefined') {
+    if (typeof window === "undefined") {
       // Ambiente Node.js - carregamos do pacote instalado
-      return require('pdfkit');
-    } else {
-      // Ambiente browser - usamos o global
-      return (window as any).PDFDocument;
+      return require("pdfkit");
     }
+    // Ambiente browser - usamos o global
+    return (window as unknown as Record<string, typeof PDFKit>).PDFDocument;
   }
 }

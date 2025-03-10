@@ -1,4 +1,4 @@
-import type { Padding as PaddingType } from '../model/types';
+import type { Padding as PaddingType } from "../model/types";
 
 // Utilitários de padding
 export const Padding = {
@@ -10,7 +10,7 @@ export const Padding = {
       left: value,
       right: value,
       top: value,
-      bottom: value
+      bottom: value,
     };
   },
 
@@ -22,7 +22,7 @@ export const Padding = {
       left: 0,
       right: 0,
       top: value,
-      bottom: 0
+      bottom: 0,
     };
   },
 
@@ -34,7 +34,7 @@ export const Padding = {
       left: 0,
       right: 0,
       top: 0,
-      bottom: value
+      bottom: value,
     };
   },
 
@@ -46,7 +46,7 @@ export const Padding = {
       left: value,
       right: 0,
       top: 0,
-      bottom: 0
+      bottom: 0,
     };
   },
 
@@ -58,7 +58,7 @@ export const Padding = {
       left: 0,
       right: value,
       top: 0,
-      bottom: 0
+      bottom: 0,
     };
   },
 
@@ -70,7 +70,7 @@ export const Padding = {
       left: 0,
       right: 0,
       top: value,
-      bottom: value
+      bottom: value,
     };
   },
 
@@ -82,7 +82,7 @@ export const Padding = {
       left: value,
       right: value,
       top: 0,
-      bottom: 0
+      bottom: 0,
     };
   },
 
@@ -94,7 +94,7 @@ export const Padding = {
       left,
       right: 0,
       top,
-      bottom: 0
+      bottom: 0,
     };
   },
 
@@ -106,7 +106,7 @@ export const Padding = {
       left,
       right: 0,
       top: 0,
-      bottom
+      bottom,
     };
   },
 
@@ -118,7 +118,7 @@ export const Padding = {
       left: 0,
       right,
       top,
-      bottom: 0
+      bottom: 0,
     };
   },
 
@@ -130,7 +130,7 @@ export const Padding = {
       left: 0,
       right,
       top: 0,
-      bottom
+      bottom,
     };
   },
 
@@ -142,7 +142,7 @@ export const Padding = {
       left: horizontal,
       right: horizontal,
       top: vertical,
-      bottom: vertical
+      bottom: vertical,
     };
   },
-}; 
+};

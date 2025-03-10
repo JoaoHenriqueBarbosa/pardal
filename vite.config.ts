@@ -1,11 +1,11 @@
-import { defineConfig } from 'vite';
-import { resolve } from 'path';
+import { resolve } from "node:path";
+import { defineConfig } from "vite";
 
 export default defineConfig({
   build: {
     lib: {
-      entry: resolve(__dirname, 'src/index.ts'),
-      name: 'Pardal',
+      entry: resolve(__dirname, "src/index.ts"),
+      name: "Pardal",
       fileName: (format) => `index.${format}.js`,
     },
     rollupOptions: {
@@ -13,11 +13,11 @@ export default defineConfig({
       external: [],
       output: {
         // Fornece variáveis globais para dependências externalizadas
-        globals: {}
-      }
+        globals: {},
+      },
     },
     sourcemap: true,
     // Garante que os arquivos de declaração TypeScript sejam gerados
     emptyOutDir: false,
-  }
-}); 
+  },
+});

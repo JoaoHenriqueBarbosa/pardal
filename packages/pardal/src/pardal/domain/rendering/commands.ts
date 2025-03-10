@@ -1,14 +1,14 @@
-import { MeasuredWord } from '../model/element';
-import { BoundingBox, Color, CornerRadius } from '../model/types';
+import type { MeasuredWord } from "../model/element";
+import type { BoundingBox, Color, CornerRadius } from "../model/types";
 
 // Tipos de comandos de renderização
 export enum RenderCommandType {
-  RECTANGLE = 'RECTANGLE',
-  CIRCLE = 'CIRCLE',
-  SCISSOR_START = 'SCISSOR_START',
-  SCISSOR_END = 'SCISSOR_END',
-  TEXT = 'TEXT',
-  IMAGE = 'IMAGE',
+  RECTANGLE = "RECTANGLE",
+  CIRCLE = "CIRCLE",
+  SCISSOR_START = "SCISSOR_START",
+  SCISSOR_END = "SCISSOR_END",
+  TEXT = "TEXT",
+  IMAGE = "IMAGE",
 }
 
 // Comando de renderização
@@ -46,10 +46,10 @@ export interface RenderCommand {
 // Utilitários para criar comandos de renderização
 export function createRectangleCommand(
   pageId: number,
-  boundingBox: BoundingBox, 
-  backgroundColor: Color, 
-  cornerRadius?: CornerRadius, 
-  zIndex: number = 0
+  boundingBox: BoundingBox,
+  backgroundColor: Color,
+  cornerRadius?: CornerRadius,
+  zIndex = 0
 ): RenderCommand {
   return {
     pageId,
@@ -57,30 +57,30 @@ export function createRectangleCommand(
     renderData: {
       rectangle: {
         backgroundColor,
-        cornerRadius
-      }
+        cornerRadius,
+      },
     },
     commandType: RenderCommandType.RECTANGLE,
-    zIndex
+    zIndex,
   };
 }
 
 export function createCircleCommand(
   pageId: number,
-  boundingBox: BoundingBox, 
-  backgroundColor: Color, 
-  zIndex: number = 0
+  boundingBox: BoundingBox,
+  backgroundColor: Color,
+  zIndex = 0
 ): RenderCommand {
   return {
     pageId,
     boundingBox,
     renderData: {
       circle: {
-        backgroundColor
-      }
+        backgroundColor,
+      },
     },
     commandType: RenderCommandType.CIRCLE,
-    zIndex
+    zIndex,
   };
 }
 
@@ -90,12 +90,12 @@ export function createTextCommand(
   content: MeasuredWord[],
   color: Color,
   fontOptions: {
-    fontId?: number,
-    fontSize?: number,
-    letterSpacing?: number,
-    lineHeight?: number
+    fontId?: number;
+    fontSize?: number;
+    letterSpacing?: number;
+    lineHeight?: number;
   } = {},
-  zIndex: number = 0
+  zIndex = 0
 ): RenderCommand {
   return {
     pageId,
@@ -107,11 +107,11 @@ export function createTextCommand(
         fontId: fontOptions.fontId,
         fontSize: fontOptions.fontSize || 16,
         letterSpacing: fontOptions.letterSpacing,
-        lineHeight: fontOptions.lineHeight
-      }
+        lineHeight: fontOptions.lineHeight,
+      },
     },
     commandType: RenderCommandType.TEXT,
-    zIndex
+    zIndex,
   };
 }
 
@@ -120,14 +120,14 @@ export function createTextCommandFromConfig(
   pageId: number,
   boundingBox: BoundingBox,
   textConfig: {
-    content: MeasuredWord[],
-    color?: Color,
-    fontId?: number,
-    fontSize?: number,
-    letterSpacing?: number,
-    lineHeight?: number
+    content: MeasuredWord[];
+    color?: Color;
+    fontId?: number;
+    fontSize?: number;
+    letterSpacing?: number;
+    lineHeight?: number;
   },
-  zIndex: number = 0
+  zIndex = 0
 ): RenderCommand {
   return {
     pageId,
@@ -139,11 +139,11 @@ export function createTextCommandFromConfig(
         fontId: textConfig.fontId,
         fontSize: textConfig.fontSize || 16,
         letterSpacing: textConfig.letterSpacing,
-        lineHeight: textConfig.lineHeight
-      }
+        lineHeight: textConfig.lineHeight,
+      },
     },
     commandType: RenderCommandType.TEXT,
-    zIndex
+    zIndex,
   };
 }
 
@@ -155,12 +155,12 @@ export function createImageCommand(
   boundingBox: BoundingBox,
   source: string,
   options: {
-    fit?: string,
-    opacity?: number,
-    cornerRadius?: CornerRadius,
-    rounded?: boolean
+    fit?: string;
+    opacity?: number;
+    cornerRadius?: CornerRadius;
+    rounded?: boolean;
   } = {},
-  zIndex: number = 0
+  zIndex = 0
 ): RenderCommand {
   return {
     pageId,
@@ -168,14 +168,14 @@ export function createImageCommand(
     renderData: {
       image: {
         source,
-        fit: options.fit || 'CONTAIN',
+        fit: options.fit || "CONTAIN",
         opacity: options.opacity !== undefined ? options.opacity : 1.0,
         cornerRadius: options.cornerRadius,
-        rounded: options.rounded
-      }
+        rounded: options.rounded,
+      },
     },
     commandType: RenderCommandType.IMAGE,
-    zIndex
+    zIndex,
   };
 }
 
@@ -186,13 +186,13 @@ export function createImageCommandFromConfig(
   pageId: number,
   boundingBox: BoundingBox,
   imageConfig: {
-    source: string,
-    fit?: string,
-    opacity?: number,
-    cornerRadius?: CornerRadius,
-    rounded?: boolean
+    source: string;
+    fit?: string;
+    opacity?: number;
+    cornerRadius?: CornerRadius;
+    rounded?: boolean;
   },
-  zIndex: number = 0
+  zIndex = 0
 ): RenderCommand {
   return createImageCommand(
     pageId,
@@ -202,8 +202,8 @@ export function createImageCommandFromConfig(
       fit: imageConfig.fit,
       opacity: imageConfig.opacity,
       cornerRadius: imageConfig.cornerRadius,
-      rounded: imageConfig.rounded
+      rounded: imageConfig.rounded,
     },
     zIndex
   );
-} 
+}

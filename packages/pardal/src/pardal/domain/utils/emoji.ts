@@ -1,3 +1,4 @@
+import { Buffer } from "../../../polyfills/buffer";
 import { ptToPx } from "./size";
 
 export interface EmojiPosition {
@@ -46,10 +47,7 @@ export const getEmojiPng = async (emoji: string) => {
  */
 export const splitByEmoji = (text: string) => {
   const segmenter = new Intl.Segmenter("pt-BR", { granularity: "grapheme" });
-  const segments = Array.from(
-    segmenter.segment(text),
-    ({ segment }) => segment
-  );
+  const segments = Array.from(segmenter.segment(text), ({ segment }) => segment);
 
   const parts: string[] = [];
   let currentText = "";
@@ -105,20 +103,14 @@ export const renderEmoji = async (
   try {
     const emojiPng = await getEmojiPng(emojiPosition.emoji);
     if (emojiPng) {
-      doc.image(
-        emojiPng as unknown as ArrayBuffer,
-        emojiPosition.x,
-        emojiPosition.y,
-        {
-          width: ptToPx(emojiSize || 16),
-          height: ptToPx(emojiSize || 16),
-        }
-      );
+      doc.image(emojiPng as unknown as ArrayBuffer, emojiPosition.x, emojiPosition.y, {
+        width: ptToPx(emojiSize || 16),
+        height: ptToPx(emojiSize || 16),
+      });
       return true;
-    } else {
-      console.warn(`Emoji não encontrado: ${emojiPosition.emoji}`);
-      return false;
     }
+    console.warn(`Emoji não encontrado: ${emojiPosition.emoji}`);
+    return false;
   } catch (error) {
     console.warn(`Erro ao renderizar emoji: ${emojiPosition.emoji}`, error);
     return false;
