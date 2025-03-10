@@ -1,6 +1,5 @@
 import type {
   ChildAlignment,
-  Color,
   CornerRadius,
   Direction,
   ElementType,
@@ -39,17 +38,17 @@ export interface ElementDeclaration {
   id?: string;
   pageId?: number;
   layout?: Partial<LayoutConfig>;
-  backgroundColor?: string | Color;
+  backgroundColor?: string;
   cornerRadius?: CornerRadius;
   padding?: number | Padding;
   childGap?: number;
   width?: SizingAxis;
   height?: SizingAxis;
-  fillColor?: string | Color;
+  fillColor?: string;
   elementType?: ElementType;
   direction?: Direction;
   childAlignment?: ChildAlignment;
-
+  
   // Propriedades para posicionamento absoluto
   x?: number;
   y?: number;
@@ -61,7 +60,7 @@ export interface ElementDeclaration {
   // Propriedades individuais de formatação de texto
   // Estas podem ser usadas diretamente no objeto principal de configuração
   fontSize?: number;
-  color?: string | Color;
+  color?: string;
   fontId?: number;
   letterSpacing?: number;
   lineHeight?: number;
@@ -73,10 +72,13 @@ export interface ElementDeclaration {
   fontStyle?: string;
 
   // Propriedades de imagem
-  source?: string; // Caminho da imagem ou dados em base64
+  source?: Buffer; // Caminho da imagem ou dados em base64
   fit?: ImageFitMode; // Modo de ajuste da imagem
   opacity?: number; // Opacidade da imagem (0.0 - 1.0)
   rounded?: boolean; // Se verdadeiro, a imagem será recortada em formato circular
+
+  // Propriedades de box blur
+  spreadness?: number; // Quantidade de desfoque
 }
 
 // Elemento de layout (entidade de domínio)
@@ -91,8 +93,11 @@ export interface LayoutElement {
   position?: Vector2; // Posição do elemento no layout (x, y)
   absolute?: boolean; // Indica se o elemento usa posicionamento absoluto
   layoutConfig: LayoutConfig;
-  backgroundColor: Color;
+  backgroundColor: string;
   cornerRadius?: CornerRadius;
+  opacity?: number;
+  source?: Buffer;
+  spreadness?: number;
   elementType: ElementType;
   textConfig?: TextElementConfig; // Configuração de texto para elementos do tipo text
   imageConfig?: ImageElementConfig; // Configuração de imagem para elementos do tipo image

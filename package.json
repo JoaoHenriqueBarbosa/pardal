@@ -23,6 +23,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
+    "@types/svgdom": "^0.1.2",
     "typescript": "~5.7.2"
   },
   "author": "",

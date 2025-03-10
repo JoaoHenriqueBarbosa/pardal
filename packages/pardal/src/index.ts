@@ -1,6 +1,11 @@
 import { createElement, endElement } from "./application/element-factory";
+// Importando para reexportar
+import { Alignment } from "./domain/layout/alignment";
 import { multiPassLayoutEngine } from "./domain/layout/engine";
+import { Padding } from "./domain/layout/padding";
+import { Sizing } from "./domain/layout/sizing";
 import type { ElementDeclaration, LayoutElement } from "./domain/model/element";
+import { DefaultImageFactory, type ImageFactory } from "./domain/model/image";
 import { DefaultPDFKitFactory, type PDFKitFactory } from "./domain/model/pdfkit";
 import {
   DEFAULT_FONTS,
@@ -10,18 +15,14 @@ import {
   type FontOptions,
   type PardalContext,
 } from "./domain/model/types";
+import { ImageFitMode } from "./domain/model/types";
+import { TextAlignment } from "./domain/model/types";
 import type { RenderCommand } from "./domain/rendering/commands";
 // Importando Logger como tipo para evitar problemas
 import type { Logger } from "./domain/utils/logger";
 import { ConsoleLogger, LogLevel } from "./domain/utils/logger";
-import { renderToPDF } from "./infrastructure/pdf-renderer";
-// Importando para reexportar
-import { Alignment } from "./domain/layout/alignment";
-import { Padding } from "./domain/layout/padding";
-import { Sizing } from "./domain/layout/sizing";
-import { ImageFitMode } from "./domain/model/types";
-import { TextAlignment } from "./domain/model/types";
 import { NullLogger } from "./domain/utils/logger";
+import { renderToPDF } from "./infrastructure/pdf-renderer";
 import { Buffer } from "./polyfills/buffer";
 
 // Utility functions
@@ -37,6 +38,25 @@ function ensureIdAndPageId(
     config.pageId = context.currentPageId;
   }
   return config;
+}
+
+export interface PardalOptions {
+  // Dimensões iniciais do documento PDF
+  dimensions?: { width: number; height: number };
+  // Modo de depuração
+  debugMode?: boolean;
+  // Factory de PDFKit
+  pdfKitFactory?: PDFKitFactory;
+  // Factory de Image
+  imageFactory?: ImageFactory;
+  // Logger
+  logger?: Logger;
+  // Opções de fontes
+  fonts?: FontOptions;
+  // Flag para usar imagens para renderizar emojis
+  useImageForEmojis?: boolean;
+  // Fator de espaçamento entre linhas
+  lineSpacingFactor?: number;
 }
 
 export default class Pardal {
@@ -55,6 +75,7 @@ export default class Pardal {
       debugMode: false,
       fonts: DEFAULT_FONTS,
       pdfKitFactory: new DefaultPDFKitFactory(),
+      imageFactory: new DefaultImageFactory(),
       logger: new ConsoleLogger(),
       pages: [],
       currentPageId: 0,
@@ -64,20 +85,11 @@ export default class Pardal {
   }
 
   static createDocument(
-    options: {
-      dimensions: Dimensions;
-      debugMode?: boolean;
-      fonts?: FontOptions;
-      pdfKitFactory?: PDFKitFactory;
-      logger?: Logger;
-      logLevel?: LogLevel;
-      useImageForEmojis?: boolean;
-      lineSpacingFactor?: number;
-    },
+    options: PardalOptions,
     childrenFn: (pardal: Pardal) => void
   ): Promise<ArrayBuffer> {
     const pardal = new Pardal();
-    pardal.context.layoutDimensions = options.dimensions;
+    pardal.context.layoutDimensions = options.dimensions || { width: 595, height: 842 };
     pardal.context.debugMode = options.debugMode || false;
     pardal.context.fonts = options.fonts || DEFAULT_FONTS;
     pardal.context.useImageForEmojis =
@@ -90,11 +102,15 @@ export default class Pardal {
       pardal.context.pdfKitFactory = options.pdfKitFactory;
     }
 
+    if (options.imageFactory) {
+      pardal.context.imageFactory = options.imageFactory;
+    }
+
     if (options.logger) {
       pardal.context.logger = options.logger;
     } else {
       // Define o nível de log baseado nas opções fornecidas
-      const logLevel = options.logLevel || (options.debugMode ? LogLevel.DEBUG : LogLevel.INFO);
+      const logLevel = options.debugMode ? LogLevel.DEBUG : LogLevel.INFO;
       pardal.context.logger = new ConsoleLogger(logLevel);
     }
 
@@ -188,6 +204,11 @@ export default class Pardal {
     this.withRect(ensureIdAndPageId(this.context, config, "group"), children);
   }
 
+  // Helper de grupo para organizar elementos
+  boxBlur(config: ElementDeclaration, children: () => void): void {
+    this.withRect(ensureIdAndPageId(this.context, config, "boxBlur"), children);
+  }
+
   // Helper de linha (grupo horizontal)
   row(config: ElementDeclaration, children: () => void): void {
     this.withRect(
@@ -219,7 +240,7 @@ export default class Pardal {
   }
 
   // Helper para criar um elemento de imagem com filho(s)
-  withImage(source: string, config: ElementDeclaration, children: () => void): void {
+  withImage(source: Buffer, config: ElementDeclaration, children: () => void): void {
     const processedConfig: ElementDeclaration = {
       ...config,
       source: source,
@@ -229,7 +250,7 @@ export default class Pardal {
   }
 
   // Helper para criar um elemento de imagem e fechá-lo imediatamente ou com filhos
-  image(source: string, config: ElementDeclaration = {}, children?: () => void): void {
+  image(source: Buffer, config: ElementDeclaration = {}, children?: () => void): void {
     if (this.context.debugMode) {
       this.context.logger.debug(`Criando elemento de imagem ${config.id || "sem id"}`);
     }
@@ -325,6 +346,10 @@ export default class Pardal {
     this.context.renderCommands.push(command);
   }
 
+  setRenderCommands(commands: RenderCommand[]): void {
+    this.context.renderCommands = commands;
+  }
+
   setDebugMode(debugMode: boolean): void {
     this.context.debugMode = debugMode;
   }
@@ -348,7 +373,7 @@ export { Sizing, Alignment, Padding, ImageFitMode, TextAlignment };
 export { measureWords, wrapTextIntoLines } from "./domain/layout/engine";
 
 // Exportações de classes concretas
-export { DefaultPDFKitFactory, ConsoleLogger, LogLevel, NullLogger };
+export { DefaultPDFKitFactory, DefaultImageFactory, ConsoleLogger, type ImageFactory, LogLevel, NullLogger };
 export type { Logger } from "./domain/utils/logger";
 
 // Polyfills

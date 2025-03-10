@@ -1,6 +1,5 @@
-import type { PardalContext } from "~/domain/model/types";
-import type Pardal from "~/index";
 import type { LayoutElement, MeasuredWord, WrappedTextLine } from "~/domain/model/element";
+import type { PardalContext } from "~/domain/model/types";
 // Importações
 import {
   type BoundingBox,
@@ -19,10 +18,10 @@ import {
   createImageCommandFromConfig,
   createRectangleCommand,
   createTextCommandFromConfig,
-} from "../rendering/commands";
-import { parseColor } from "../utils/color";
-import { isEmoji } from "../utils/emoji";
-import { parseText } from "../utils/text";
+} from "~/domain/rendering/commands";
+import { isEmoji } from "~/domain/utils/emoji";
+import { parseText } from "~/domain/utils/text";
+import type Pardal from "~/index";
 
 /**
  * Medir dimensões de texto usando PDFKit
@@ -168,6 +167,9 @@ export function wrapTextIntoLines(
     let currentLine: WrappedTextLine | null = null;
     let currentLineWidth = 0;
 
+    // Helper function to check if a word is a space
+    const isSpace = (word: MeasuredWord) => word.text.trim() === '';
+
     for (let i = 0; i < words.length; i++) {
       const word = words[i];
 
@@ -255,32 +257,85 @@ export function wrapTextIntoLines(
           };
         }
 
-        // Se a palavra cabe na linha atual, adiciona a palavra à linha
-        if (currentLineWidth + word.width <= containerWidth) {
+        const isSpaceWord = isSpace(word);
+        const isFirstWordInLine = currentLine.content.length === 0;
+        
+        // Se a palavra é um espaço e é a primeira palavra da linha,
+        // adicionamos para renderização mas não para medição
+        if (isSpaceWord && isFirstWordInLine) {
           currentLine.content.push(word);
+          // Não contabilizamos na largura da linha
+          // Ainda contabilizamos no comprimento do texto para rastreamento correto
+          currentLine.length += word.length;
+        }
+        // Se a palavra cabe na linha atual, adiciona a palavra à linha
+        else if (currentLineWidth + word.width <= containerWidth) {
+          // Adicionar a palavra ao conteúdo da linha
+          currentLine.content.push(word);
+          
+          // Adicionar à largura da linha (para verificação de container)
+          // Se for espaço no final da linha, será tratado na próxima iteração
           currentLineWidth += word.width;
+          
           // Update the length of the line
           currentLine.length += word.length;
-          currentLine.dimensions.width += word.width;
+          
+          // Atualizar a largura para renderização
+          // Se for espaço, pode ser que não contabilize no final da renderização
+          if (!isSpaceWord) {
+            currentLine.dimensions.width += word.width;
+          } else {
+            // Se for espaço, adiciona temporariamente à largura de renderização
+            // Pode ser removido depois se for o último da linha
+            currentLine.dimensions.width += word.width;
+          }
+          
           currentLine.dimensions.height = Math.max(currentLine.dimensions.height, word.height);
         } else {
+          // Verificar se o último item da linha atual é um espaço
+          if (currentLine.content.length > 0) {
+            const lastWordIndex = currentLine.content.length - 1;
+            const lastWord = currentLine.content[lastWordIndex];
+            
+            // Se o último item é um espaço, não o contabilizamos na largura final da linha
+            if (isSpace(lastWord)) {
+              // Remover a largura do espaço da dimensão final da linha
+              currentLine.dimensions.width -= lastWord.width;
+            }
+          }
+          
           // Adiciona a linha atual ao array de linhas
           lines.push(currentLine);
 
           // Inicia uma nova linha com a palavra atual
           currentLine = {
             content: [word],
-            dimensions: { width: word.width, height: word.height },
+            dimensions: { 
+              width: isSpaceWord ? 0 : word.width, 
+              height: word.height 
+            },
             startOffset: word.startOffset,
             length: word.length,
           };
-          currentLineWidth = word.width;
+          currentLineWidth = isSpaceWord ? 0 : word.width;
         }
       }
     }
 
     // Não esquecer de adicionar a última linha, se existir
     if (currentLine !== null && currentLine.content.length > 0) {
+      // Verificar se o último item da última linha é um espaço
+      if (currentLine.content.length > 0) {
+        const lastWordIndex = currentLine.content.length - 1;
+        const lastWord = currentLine.content[lastWordIndex];
+        
+        // Se o último item é um espaço, não o contabilizamos na largura final da linha
+        if (isSpace(lastWord)) {
+          // Remover a largura do espaço da dimensão final da linha
+          currentLine.dimensions.width -= lastWord.width;
+        }
+      }
+      
       lines.push(currentLine);
     }
 
@@ -1056,17 +1111,26 @@ function generateRenderCommands(pardal: Pardal): void {
     switch (element.elementType) {
       case "rectangle": {
         const rectCmd = createRectangleCommand(
+          element.id,
           element.pageId,
           boundingBox,
           element.backgroundColor,
-          element.cornerRadius
+          element.cornerRadius,
+          element.opacity,
+          element.spreadness,
+          element.source
         );
         pardal.addRenderCommand(rectCmd);
         break;
       }
 
       case "circle": {
-        const circleCmd = createCircleCommand(element.pageId, boundingBox, element.backgroundColor);
+        const circleCmd = createCircleCommand(
+          element.id,
+          element.pageId,
+          boundingBox,
+          element.backgroundColor
+        );
         pardal.addRenderCommand(circleCmd);
         break;
       }
@@ -1074,7 +1138,7 @@ function generateRenderCommands(pardal: Pardal): void {
       case "text":
         if (element.textConfig && element.wrappedTextLines) {
           const textConfig = element.textConfig;
-          const color = textConfig.color || { r: 0, g: 0, b: 0, a: 1 };
+          const color = textConfig.color || "#000000";
 
           // Extrair todas as palavras de todas as linhas em um array plano
           let allWords: MeasuredWord[] = [];
@@ -1083,14 +1147,20 @@ function generateRenderCommands(pardal: Pardal): void {
           }
 
           if (allWords.length > 0) {
-            const textCmd = createTextCommandFromConfig(element.pageId, boundingBox, {
-              content: allWords,
-              color: typeof color === "string" ? parseColor(color) : color,
-              fontId: textConfig.fontId,
-              fontSize: textConfig.fontSize,
-              letterSpacing: textConfig.letterSpacing,
-              lineHeight: textConfig.lineHeight,
-            });
+            const textCmd = createTextCommandFromConfig(
+              element.id,
+              element.pageId,
+              boundingBox,
+              {
+                content: allWords,
+                color: color,
+                fontId: textConfig.fontId,
+                fontSize: textConfig.fontSize,
+                letterSpacing: textConfig.letterSpacing,
+                lineHeight: textConfig.lineHeight,
+              },
+              0
+            );
             pardal.addRenderCommand(textCmd);
           }
         }
@@ -1103,6 +1173,7 @@ function generateRenderCommands(pardal: Pardal): void {
             currentContext.logger.debug("Processando elemento de imagem:", element.id);
           }
           const imageCmd = createImageCommandFromConfig(
+            element.id,
             element.pageId,
             boundingBox,
             {
@@ -1199,11 +1270,14 @@ function positionElement(pardal: Pardal, element: LayoutElement, position: Vecto
   if (element.elementType === "rectangle") {
     pardal.addRenderCommand(
       createRectangleCommand(
+        element.id,
         element.pageId,
         boundingBox,
         element.backgroundColor,
         element.cornerRadius,
-        0
+        element.opacity,
+        element.spreadness,
+        element.source
       )
     );
     if (currentContext.debugMode) {
@@ -1211,7 +1285,7 @@ function positionElement(pardal: Pardal, element: LayoutElement, position: Vecto
     }
   } else if (element.elementType === "circle") {
     pardal.addRenderCommand(
-      createCircleCommand(element.pageId, boundingBox, element.backgroundColor, 0)
+      createCircleCommand(element.id, element.pageId, boundingBox, element.backgroundColor, 0)
     );
     if (currentContext.debugMode) {
       currentContext.logger.debug(`  Adicionando comando CIRCLE para elemento ${element.id}`);
@@ -1220,6 +1294,7 @@ function positionElement(pardal: Pardal, element: LayoutElement, position: Vecto
     // Processar elemento de imagem
     pardal.addRenderCommand(
       createImageCommandFromConfig(
+        element.id,
         element.pageId,
         boundingBox,
         {
@@ -1237,10 +1312,7 @@ function positionElement(pardal: Pardal, element: LayoutElement, position: Vecto
     }
   } else if (element.elementType === "text" && element.textConfig) {
     // Processar elemento de texto
-    const color =
-      typeof element.textConfig.color === "string"
-        ? parseColor(element.textConfig.color)
-        : element.textConfig.color || parseColor("#000000");
+    const color = element.textConfig.color || "#000000";
 
     const fontSize = element.textConfig.fontSize || 16;
     // Usar o lineSpacingFactor específico do elemento ou o global do contexto
@@ -1377,6 +1449,7 @@ function positionElement(pardal: Pardal, element: LayoutElement, position: Vecto
         // Adicionar comando de renderização para esta linha
         pardal.addRenderCommand(
           createTextCommandFromConfig(
+            element.id,
             element.pageId,
             lineBoundingBox,
             {
@@ -1432,6 +1505,7 @@ function positionElement(pardal: Pardal, element: LayoutElement, position: Vecto
 
       pardal.addRenderCommand(
         createTextCommandFromConfig(
+          element.id,
           element.pageId,
           boundingBox,
           {

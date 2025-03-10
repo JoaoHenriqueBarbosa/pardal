@@ -3,12 +3,68 @@ import { Buffer } from "~/polyfills/buffer";
 import { getFontForWord } from "~/domain/layout/engine";
 import type { MeasuredWord } from "~/domain/model/element";
 import type { PDFDocument } from "~/domain/model/pdfkit";
-import { DEFAULT_FONTS } from "~/domain/model/types";
+import { DEFAULT_FONTS, ImageFitMode } from "~/domain/model/types";
 import type { CornerRadius, PardalContext } from "~/domain/model/types";
 import { RenderCommandType } from "~/domain/rendering/commands";
 import type { RenderCommand } from "~/domain/rendering/commands";
-import { colorToHex } from "~/domain/utils/color";
 import { isEmoji, isKeyCap, renderEmoji } from "~/domain/utils/emoji";
+import { ptToPx, pxToPt } from "~/domain/utils/size";
+
+function getChildrenElementsRenderCommands(pardal: Pardal, parentId: string): RenderCommand[] {
+  const currentContext = pardal.getContext();
+  const parentElement = currentContext.layoutElements.find((element) => element.id === parentId);
+  if (!parentElement) {
+    return [];
+  }
+
+  // Array para armazenar todos os IDs dos elementos filhos (incluindo descendentes)
+  const childElementIds: string[] = [];
+
+  // Função recursiva para coletar IDs de todos os elementos filhos na árvore
+  function collectChildIds(element: typeof parentElement) {
+    if (!element) return;
+
+    // Para cada filho direto do elemento atual
+    for (const child of element.children) {
+      // Adiciona o ID do filho à lista
+      childElementIds.push(child.id);
+      // Chama recursivamente para os filhos deste filho
+      collectChildIds(child);
+    }
+  }
+
+  // Inicia a coleta a partir do elemento pai
+  collectChildIds(parentElement);
+
+  // Filtra os comandos de renderização que correspondem aos IDs dos filhos
+  return currentContext.renderCommands.filter((command) =>
+    childElementIds.some(
+      (childId) => command.id === childId || command.id.startsWith(`${childId}.`)
+    )
+  );
+}
+
+/**
+ * Changes the text color of all text elements that are children of the specified parent element.
+ * @param pardal The Pardal instance
+ * @param parentIdOrCommands The ID of the parent element or array of render commands to modify
+ * @param newColor The new color to apply to all text child elements, in hexadecimal format (e.g., "#FF0000")
+ * @returns The number of text elements that were modified
+ */
+export function changeChildTextColor(
+  pardal: Pardal, 
+  childCommands: RenderCommand[], 
+  newColor: string
+): number {
+  pardal.setRenderCommands(pardal.getContext().renderCommands.map((command) => {
+    if (childCommands.some((child) => child.id === command.id) && command.commandType === RenderCommandType.TEXT && command.renderData.text) {
+      command.renderData.text.color = newColor;
+    }
+    return command;
+  }));
+  
+  return 0;
+}
 
 /**
  * Renderiza a árvore de comandos para um documento PDF
@@ -94,7 +150,74 @@ export async function renderToPDF(pardal: Pardal): Promise<ArrayBuffer> {
         case RenderCommandType.RECTANGLE:
           if (command.renderData.rectangle) {
             const { backgroundColor, cornerRadius } = command.renderData.rectangle;
-            drawRectangle(currentContext, doc, x, y, width, height, backgroundColor, cornerRadius);
+            if (command.id.startsWith("boxBlur")) {
+              const childrenRenderCommands = getChildrenElementsRenderCommands(pardal, command.id);
+              const spreadness = command.renderData.rectangle?.spreadness || 0;
+              let textColor = backgroundColor;
+              if (backgroundColor === "auto" && command.renderData.rectangle.source) {
+                // Find the minimum and maximum coordinates to create a bounding box
+                // that encompasses all children
+                const minChildrenX = Math.min(
+                  ...childrenRenderCommands.map((command) => command.boundingBox.x)
+                );
+                const minChildrenY = Math.min(
+                  ...childrenRenderCommands.map((command) => command.boundingBox.y)
+                );
+                const maxChildrenRight = Math.max(
+                  ...childrenRenderCommands.map((command) => command.boundingBox.x + command.boundingBox.width)
+                );
+                const maxChildrenBottom = Math.max(
+                  ...childrenRenderCommands.map((command) => command.boundingBox.y + command.boundingBox.height)
+                );
+
+                // Calculate width and height of the full bounding box
+                const totalWidth = maxChildrenRight - minChildrenX;
+                const totalHeight = maxChildrenBottom - minChildrenY;
+
+                const luminance = await currentContext.imageFactory
+                  .createProcessor()
+                  .getAvgRGBValuesToArea(command.renderData.rectangle.source, {
+                    x: ptToPx(minChildrenX),
+                    y: ptToPx(minChildrenY),
+                    width: ptToPx(totalWidth),
+                    height: ptToPx(totalHeight),
+                  });
+                
+                // Use the W3C algorithm to determine the best contrast color
+                // assuming luminance is in {r, g, b} format
+                textColor = getContrastColor(luminance.r, luminance.g, luminance.b);
+              }
+
+              changeChildTextColor(pardal, childrenRenderCommands, textColor);
+
+              const image = await createTextHighlightSvg(
+                currentContext,
+                childrenRenderCommands.map((command) => command.boundingBox),
+                textColor === "#000000" ? "#FFFFFF" : "#000000",
+                spreadness,
+                width,
+                height
+              );
+
+              doc
+                .fillOpacity(command.renderData.rectangle?.opacity || 0.5)
+                .image(image, x, y, {
+                  width,
+                  height,
+                })
+                .fillOpacity(1);
+            } else {
+              drawRectangle(
+                currentContext,
+                doc,
+                x,
+                y,
+                width,
+                height,
+                backgroundColor,
+                cornerRadius
+              );
+            }
           }
           break;
 
@@ -214,6 +337,131 @@ export async function renderToPDF(pardal: Pardal): Promise<ArrayBuffer> {
 }
 
 /**
+ * Cria o svg para os destaques de texto
+ * @param textAreas - As áreas de texto para criar destaques
+ * @param contrastColor - A cor de contraste para os destaques
+ * @returns Um buffer de imagem com os destaques
+ */
+export async function createTextHighlightSvg(
+  context: PardalContext,
+  textAreas: Array<{ x: number; y: number; width: number; height: number }>,
+  contrastColor: string,
+  spreadness: number,
+  width: number,
+  height: number
+): Promise<Buffer> {
+  // Criar um SVG para os destaques de texto na posição 0,0
+  // Ordenar as áreas de texto por posição Y
+  const textRects = textAreas
+    .map((area) => ({
+      x: ptToPx(area.x),
+      y: ptToPx(area.y),
+      width: ptToPx(area.width),
+      height: ptToPx(area.height),
+    }))
+    .sort((a, b) => a.y - b.y);
+
+  // Processar áreas adjacentes para ajustar sobreposições e lacunas
+  for (let i = 0; i < textRects.length - 1; i++) {
+    const currentArea = textRects[i];
+    const nextArea = textRects[i + 1];
+
+    // Calcular a base (y + height) da área atual e o topo da próxima
+    const currentBottom = currentArea.y + currentArea.height;
+    const nextTop = nextArea.y;
+
+    // Verificar sobreposição ou lacuna
+    if (currentBottom > nextTop) {
+      // Caso de sobreposição: ajustar o meio-termo entre as áreas
+      const midPoint = (currentArea.y + nextArea.y + currentArea.height) / 2;
+
+      // Ajustar a altura da área atual para terminar no ponto médio
+      currentArea.height = midPoint - currentArea.y;
+
+      // Ajustar o início da próxima área para começar no ponto médio
+      const heightDiff = nextTop - midPoint;
+      nextArea.y = midPoint;
+      nextArea.height -= heightDiff;
+    } else if (currentBottom < nextTop) {
+      // Caso de lacuna: estender a área atual para encontrar a próxima
+      currentArea.height = nextTop - currentArea.y;
+    }
+    // Se currentBottom === nextTop, já estão perfeitamente alinhados, não precisa de ajuste
+  }
+
+  // Método alternativo: criar diretamente os caminhos SVG para cada retângulo e combiná-los
+  let pathData = "";
+
+  // Determinar as dimensões do SVG com base nos retângulos
+  let svgMinX = Number.POSITIVE_INFINITY;
+  let svgMinY = Number.POSITIVE_INFINITY;
+  let svgMaxX = 0;
+  let svgMaxY = 0;
+
+  // Encontrar os limites do conteúdo
+  for (const rect of textRects) {
+    svgMinX = Math.min(svgMinX, rect.x);
+    svgMinY = Math.min(svgMinY, rect.y);
+    svgMaxX = Math.max(svgMaxX, rect.x + rect.width);
+    svgMaxY = Math.max(svgMaxY, rect.y + rect.height);
+  }
+
+  // Calcular as dimensões do conteúdo e o offset necessário para centralização
+  const contentWidth = svgMaxX - svgMinX;
+  const contentHeight = svgMaxY - svgMinY;
+  const offsetX = (ptToPx(width) - contentWidth) / 2;
+  const offsetY = (ptToPx(height) - contentHeight) / 2;
+
+  // Criar caminho para cada retângulo com coordenadas relativas à origem (0,0)
+  for (const rect of textRects) {
+    // Ajustar coordenadas para que comecem em (0,0)
+    const x = rect.x - svgMinX;
+    const y = rect.y - svgMinY;
+    const width = rect.width;
+    const height = rect.height;
+    const rx = 12; // Raio para cantos arredondados
+    const ry = 12;
+
+    // Construir o caminho SVG otimizado para garantir o arredondamento correto
+    // Usar a notação de arcos SVG: A rx ry x-axis-rotation large-arc-flag sweep-flag x y
+    const rectPath = `
+        M ${x + rx},${y}
+        H ${x + width - rx}
+        A ${rx} ${ry} 0 0 1 ${x + width} ${y + ry}
+        V ${y + height - ry}
+        A ${rx} ${ry} 0 0 1 ${x + width - rx} ${y + height}
+        H ${x + rx}
+        A ${rx} ${ry} 0 0 1 ${x} ${y + height - ry}
+        V ${y + ry}
+        A ${rx} ${ry} 0 0 1 ${x + rx} ${y}
+        Z
+      `
+      .replace(/\n\s+/g, " ")
+      .trim();
+
+    pathData += rectPath;
+  }
+
+  // Criando o SVG com as dimensões aumentadas para incluir a sangria
+  const textHighlightSvg = `<svg width="${ptToPx(width)}" height="${ptToPx(height)}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="gaussianBlur" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="${spreadness}" />
+        </filter>
+      </defs>
+      <g filter="url(#gaussianBlur)" transform="translate(${offsetX}, ${offsetY})">
+        <path d="${pathData}" fill="${contrastColor}" />
+      </g>
+    </svg>`;
+
+  // Converter o SVG para buffer
+  const svgBuffer = Buffer.from(textHighlightSvg) as unknown as Buffer;
+  const textHighlightOverlay = await context.imageFactory.createProcessor().toPng(svgBuffer);
+
+  return textHighlightOverlay;
+}
+
+/**
  * Desenha uma imagem no documento PDF
  */
 function drawImage(
@@ -223,7 +471,7 @@ function drawImage(
   y: number,
   width: number,
   height: number,
-  source: string,
+  source: Buffer,
   fit: string,
   opacity: number,
   cornerRadius?: CornerRadius,
@@ -370,26 +618,24 @@ function drawRectangle(
   y: number,
   width: number,
   height: number,
-  backgroundColor: { r: number; g: number; b: number; a: number },
+  backgroundColor: string,
   cornerRadius?: number
 ): void {
   if (context.debugMode) {
     context.logger.debug(`Desenhando retângulo em (${x}, ${y}) com tamanho ${width}x${height}`);
   }
   if (context.debugMode) {
-    context.logger.debug(
-      `Cor: rgb(${backgroundColor.r}, ${backgroundColor.g}, ${backgroundColor.b})`
-    );
+    context.logger.debug(`Cor: ${backgroundColor}`);
   }
 
-  // Usar formato hexadecimal para compatibilidade
-  const hexColor = colorToHex(backgroundColor);
+  // Usar a cor diretamente
+  const hexColor = backgroundColor;
 
   if (context.debugMode) {
     context.logger.debug(`Cor em hex: ${hexColor}`);
   }
 
-  doc.fillColor(hexColor).fillOpacity(backgroundColor.a / 255);
+  doc.fillColor(hexColor);
 
   if (cornerRadius) {
     // Se tiver cornerRadius, desenha com cantos arredondados
@@ -406,7 +652,7 @@ function drawCircle(
   x: number,
   y: number,
   width: number,
-  backgroundColor: { r: number; g: number; b: number; a: number }
+  backgroundColor: string
 ): void {
   const radius = width / 2;
 
@@ -414,12 +660,9 @@ function drawCircle(
     context.logger.debug(`Desenhando círculo em (${x}, ${y}) com raio ${radius}`);
   }
 
-  // Usar formato hexadecimal para compatibilidade
-  const hexColor = colorToHex(backgroundColor);
-
+  // Usar a cor diretamente
   doc
-    .fillColor(hexColor)
-    .fillOpacity(backgroundColor.a / 255)
+    .fillColor(backgroundColor)
     .circle(x + radius, y + radius, radius)
     .fill();
 }
@@ -524,11 +767,11 @@ async function drawText(
     context.logger.debug(
       `Desenhando texto em (${x}, ${y}): "${content.map((segment) => segment.text).join("")}"`
     );
-    context.logger.debug(`Fonte: ${fontSize}px, Cor: rgb(${color.r}, ${color.g}, ${color.b})`);
+    context.logger.debug(`Fonte: ${fontSize}px, Cor: ${color}`);
   }
 
-  // Usar formato hexadecimal para compatibilidade
-  const hexColor = colorToHex(color);
+  // Atualizar para usar string diretamente
+  const hexColor = color;
 
   if (content.length === 0) return;
 
@@ -549,7 +792,7 @@ async function drawText(
     );
 
     // Configurar aparência do texto
-    configureTextAppearance(doc, fontFamily, fontSize, hexColor, rendered ? 0 : color.a / 255);
+    configureTextAppearance(doc, fontFamily, fontSize, hexColor, rendered ? 0 : 1);
 
     // Renderizar o texto
     doc.text(text, x, y + correction, {
@@ -629,7 +872,7 @@ async function drawText(
         );
 
         // Configurar aparência do texto
-        configureTextAppearance(doc, segmentFont, fontSize, hexColor, rendered ? 0 : color.a / 255);
+        configureTextAppearance(doc, segmentFont, fontSize, hexColor, rendered ? 0 : 1);
 
         if (isFirstSegmentInFirstLine) {
           doc.text(segment.text, xPos, line.y, {
@@ -652,4 +895,79 @@ async function drawText(
       }
     }
   }
+}
+
+/**
+ * Calculates color brightness according to W3C formula
+ * @param r Red value (0-255)
+ * @param g Green value (0-255)
+ * @param b Blue value (0-255)
+ * @returns Brightness value
+ */
+function calculateBrightness(r: number, g: number, b: number): number {
+  return ((r * 299) + (g * 587) + (b * 114)) / 1000;
+}
+
+/**
+ * Calculates color difference between two colors according to W3C formula
+ * @param r1 Red value of first color (0-255)
+ * @param g1 Green value of first color (0-255)
+ * @param b1 Blue value of first color (0-255)
+ * @param r2 Red value of second color (0-255)
+ * @param g2 Green value of second color (0-255)
+ * @param b2 Blue value of second color (0-255)
+ * @returns Color difference value
+ */
+function calculateColorDifference(
+  r1: number, g1: number, b1: number, 
+  r2: number, g2: number, b2: number
+): number {
+  return (
+    Math.max(r1, r2) - Math.min(r1, r2) +
+    Math.max(g1, g2) - Math.min(g1, g2) +
+    Math.max(b1, b2) - Math.min(b1, b2)
+  );
+}
+
+/**
+ * Determines the best contrast color (black or white) for a given background color
+ * based on W3C accessibility guidelines
+ * @param backgroundColor Background color in RGB format
+ * @returns '#000000' for black or '#FFFFFF' for white
+ */
+function getContrastColor(r: number, g: number, b: number): string {
+  // Calculate brightness of background color
+  const bgBrightness = calculateBrightness(r, g, b);
+  
+  // Calculate brightness of black and white
+  const blackBrightness = calculateBrightness(0, 0, 0); // 0
+  const whiteBrightness = calculateBrightness(255, 255, 255); // 255
+  
+  // Calculate brightness difference with black and white
+  const blackBrightnessDiff = Math.abs(bgBrightness - blackBrightness);
+  const whiteBrightnessDiff = Math.abs(bgBrightness - whiteBrightness);
+  
+  // Calculate color difference with black and white
+  const blackColorDiff = calculateColorDifference(r, g, b, 0, 0, 0);
+  const whiteColorDiff = calculateColorDifference(r, g, b, 255, 255, 255);
+  
+  // According to W3C guidelines, good visibility requires:
+  // 1. Brightness difference > 125
+  // 2. Color difference > 500
+  
+  // Check if both black and white meet the criteria
+  const blackMeetsCriteria = blackBrightnessDiff > 125 && blackColorDiff > 500;
+  const whiteMeetsCriteria = whiteBrightnessDiff > 125 && whiteColorDiff > 500;
+  
+  // If both meet criteria, choose the one with greater brightness difference
+  if (blackMeetsCriteria && whiteMeetsCriteria) {
+    return blackBrightnessDiff > whiteBrightnessDiff ? '#000000' : '#FFFFFF';
+  }
+  
+  // If only one meets criteria, use that one
+  if (blackMeetsCriteria) return '#000000';
+  if (whiteMeetsCriteria) return '#FFFFFF';
+  
+  // If neither meets both criteria, use the one with better brightness difference
+  return bgBrightness > 127.5 ? '#000000' : '#FFFFFF';
 }

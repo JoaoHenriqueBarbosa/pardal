@@ -5,6 +5,7 @@
       "name": "clay-pdfkit",
       "devDependencies": {
         "@biomejs/biome": "^1.9.4",
+        "@types/svgdom": "^0.1.2",
         "typescript": "~5.7.2",
       },
     },
@@ -204,6 +205,8 @@
     "@types/node": ["@types/node@22.13.9", "", { "dependencies": { "undici-types": "~6.20.0" } }, "sha512-acBjXdRJ3A6Pb3tqnw9HZmyR3Fiol3aGxRCK1x3d+6CDAMjl7I649wpSd+yNURCjbOUGu9tqtLKnTGxmK6CyGw=="],
 
     "@types/pdfkit": ["@types/pdfkit@0.13.9", "", { "dependencies": { "@types/node": "*" } }, "sha512-RDG8Yb1zT7I01FfpwK7nMSA433XWpblMqSCtA5vJlSyavWZb303HUYPCel6JTiDDFqwGLvtAnYbH8N/e0Cb89g=="],
+
+    "@types/svgdom": ["@types/svgdom@0.1.2", "", {}, "sha512-ZFwX8cDhbz6jiv3JZdMVYq8SSWHOUchChPmRoMwdIu3lz89aCu/gVK9TdR1eeb0ARQ8+5rtjUKrk1UR8hh0dhQ=="],
 
     "@types/ws": ["@types/ws@8.5.14", "", { "dependencies": { "@types/node": "*" } }, "sha512-bd/YFLW+URhBzMXurx7lWByOu+xzU9+kb3RboOteXYDfW+tr+JZa99OyNmPINEGB/ahzKrEuc8rcv4gnpJmxTw=="],
 

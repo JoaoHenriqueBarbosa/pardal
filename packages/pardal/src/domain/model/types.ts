@@ -4,6 +4,7 @@ import type { Logger } from "../utils/logger";
 import type { RenderCommand } from "../rendering/commands";
 import type { LayoutElement } from "./element";
 import type { PDFKitFactory } from "./pdfkit";
+import type { ImageFactory } from "./image";
 
 // Representação de um ponto 2D
 export interface Vector2 {
@@ -23,14 +24,6 @@ export interface BoundingBox {
   y: number;
   width: number;
   height: number;
-}
-
-// Representação de cor RGBA
-export interface Color {
-  r: number;
-  g: number;
-  b: number;
-  a: number;
 }
 
 // Preenchimento ao redor de um elemento
@@ -129,7 +122,7 @@ export enum TextAlignment {
 // Configuração de elemento de texto
 export interface TextElementConfig {
   content: string; // Conteúdo do texto
-  color?: string | Color; // Cor do texto
+  color?: string; // Cor do texto
   fontId?: number; // ID da fonte (0 = padrão)
   fontSize?: number; // Tamanho da fonte em pixels
   letterSpacing?: number; // Espaçamento adicional entre letras
@@ -178,7 +171,7 @@ export const DEFAULT_FONTS: FontOptions = {
  * Configuração de elemento de imagem
  */
 export interface ImageElementConfig {
-  source: string; // Caminho da imagem ou Buffer
+  source: Buffer; // Caminho da imagem ou Buffer
   fit?: ImageFitMode; // Modo de ajuste da imagem
   opacity?: number; // Opacidade da imagem (0.0 - 1.0)
   cornerRadius?: CornerRadius; // Raio dos cantos (para imagens com cantos arredondados)
@@ -212,6 +205,7 @@ export interface PardalContext {
   debugMode: boolean;
   fonts?: FontOptions;
   pdfKitFactory: PDFKitFactory;
+  imageFactory: ImageFactory;
   logger: Logger;
   pages: Page[];
   currentPageId: number;

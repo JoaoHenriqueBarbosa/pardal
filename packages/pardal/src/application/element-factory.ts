@@ -1,6 +1,6 @@
-import type Pardal from "~/index";
 import { Sizing } from "~/domain/layout/sizing";
 import type { ElementDeclaration, LayoutElement } from "~/domain/model/element";
+import type Pardal from "~/index";
 import {
   Direction,
   type ElementType,
@@ -13,7 +13,6 @@ import {
   type TextElementConfig,
   TextWrapMode,
 } from "../domain/model/types";
-import { parseColor } from "../domain/utils/color";
 import { parsePadding } from "../domain/utils/padding";
 
 /**
@@ -27,7 +26,7 @@ export function createElement(
   const currentContext = pardal.getContext();
 
   // Processar cor de fundo e padding
-  const backgroundColor = parseColor(config.fillColor || config.backgroundColor);
+  const backgroundColor = config.fillColor || config.backgroundColor || "#FFFFFF";
   const padding = parsePadding(config.padding);
 
   // Processamento especial para texto
@@ -125,6 +124,9 @@ export function createElement(
     elementType,
     textConfig,
     imageConfig,
+    opacity: config.opacity,
+    spreadness: config.spreadness,
+    source: config.source,
   };
 
   // Adicionar posição absoluta se fornecida

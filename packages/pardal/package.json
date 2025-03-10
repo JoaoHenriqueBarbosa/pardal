@@ -8,14 +8,13 @@
   "files": ["dist"],
   "scripts": {
     "dev": "bun run --watch src/main.ts",
-    "build": "tsc && bun build src/index.ts --outdir dist --target browser --external pdfkit",
+    "build": "tsc && bun build src/index.ts --outdir dist --target browser --external pdfkit --external sharp",
     "test": "bun test"
   },
   "devDependencies": {
     "@types/pdfkit": "^0.13.9",
     "typescript": "~5.7.2"
   },
-  "dependencies": {},
   "peerDependencies": {
     "pdfkit": ">=0.13.0"
   },

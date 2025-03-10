@@ -1,5 +1,5 @@
 import type { MeasuredWord } from "../model/element";
-import type { BoundingBox, Color, CornerRadius } from "../model/types";
+import type { BoundingBox, CornerRadius } from "../model/types";
 
 // Tipos de comandos de renderização
 export enum RenderCommandType {
@@ -13,26 +13,30 @@ export enum RenderCommandType {
 
 // Comando de renderização
 export interface RenderCommand {
+  id: string;
   pageId: number;
   boundingBox: BoundingBox;
   renderData: {
     rectangle?: {
-      backgroundColor: Color;
+      backgroundColor: string;
       cornerRadius?: CornerRadius;
+      opacity?: number;
+      spreadness?: number;
+      source?: Buffer;
     };
     circle?: {
-      backgroundColor: Color;
+      backgroundColor: string;
     };
     text?: {
       content: MeasuredWord[];
-      color: Color;
+      color: string;
       fontId?: number;
       fontSize?: number;
       letterSpacing?: number;
       lineHeight?: number;
     };
     image?: {
-      source: string;
+      source: Buffer;
       fit: string;
       opacity: number;
       cornerRadius?: CornerRadius;
@@ -45,19 +49,27 @@ export interface RenderCommand {
 
 // Utilitários para criar comandos de renderização
 export function createRectangleCommand(
+  id: string,
   pageId: number,
   boundingBox: BoundingBox,
-  backgroundColor: Color,
+  backgroundColor: string,
   cornerRadius?: CornerRadius,
+  opacity?: number,
+  spreadness?: number,
+  source?: Buffer,
   zIndex = 0
 ): RenderCommand {
   return {
+    id,
     pageId,
     boundingBox,
     renderData: {
       rectangle: {
         backgroundColor,
         cornerRadius,
+        opacity,
+        spreadness,
+        source,
       },
     },
     commandType: RenderCommandType.RECTANGLE,
@@ -66,12 +78,14 @@ export function createRectangleCommand(
 }
 
 export function createCircleCommand(
+  id: string,
   pageId: number,
   boundingBox: BoundingBox,
-  backgroundColor: Color,
+  backgroundColor: string,
   zIndex = 0
 ): RenderCommand {
   return {
+    id,
     pageId,
     boundingBox,
     renderData: {
@@ -85,10 +99,11 @@ export function createCircleCommand(
 }
 
 export function createTextCommand(
+  id: string,
   pageId: number,
   boundingBox: BoundingBox,
   content: MeasuredWord[],
-  color: Color,
+  color: string,
   fontOptions: {
     fontId?: number;
     fontSize?: number;
@@ -98,6 +113,7 @@ export function createTextCommand(
   zIndex = 0
 ): RenderCommand {
   return {
+    id,
     pageId,
     boundingBox,
     renderData: {
@@ -117,11 +133,12 @@ export function createTextCommand(
 
 // Sobrecarga que aceita diretamente um TextElementConfig
 export function createTextCommandFromConfig(
+  id: string,
   pageId: number,
   boundingBox: BoundingBox,
   textConfig: {
     content: MeasuredWord[];
-    color?: Color;
+    color?: string;
     fontId?: number;
     fontSize?: number;
     letterSpacing?: number;
@@ -130,12 +147,13 @@ export function createTextCommandFromConfig(
   zIndex = 0
 ): RenderCommand {
   return {
+    id,
     pageId,
     boundingBox,
     renderData: {
       text: {
         content: textConfig.content,
-        color: textConfig.color || { r: 0, g: 0, b: 0, a: 1 },
+        color: textConfig.color || "#000000",
         fontId: textConfig.fontId,
         fontSize: textConfig.fontSize || 16,
         letterSpacing: textConfig.letterSpacing,
@@ -151,9 +169,10 @@ export function createTextCommandFromConfig(
  * Cria um comando de renderização de imagem
  */
 export function createImageCommand(
+  id: string,
   pageId: number,
   boundingBox: BoundingBox,
-  source: string,
+  source: Buffer,
   options: {
     fit?: string;
     opacity?: number;
@@ -163,6 +182,7 @@ export function createImageCommand(
   zIndex = 0
 ): RenderCommand {
   return {
+    id,
     pageId,
     boundingBox,
     renderData: {
@@ -183,10 +203,11 @@ export function createImageCommand(
  * Cria um comando de renderização de imagem a partir de uma configuração
  */
 export function createImageCommandFromConfig(
+  id: string,
   pageId: number,
   boundingBox: BoundingBox,
   imageConfig: {
-    source: string;
+    source: Buffer;
     fit?: string;
     opacity?: number;
     cornerRadius?: CornerRadius;
@@ -195,6 +216,7 @@ export function createImageCommandFromConfig(
   zIndex = 0
 ): RenderCommand {
   return createImageCommand(
+    id,
     pageId,
     boundingBox,
     imageConfig.source,
