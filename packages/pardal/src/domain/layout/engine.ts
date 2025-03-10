@@ -1,6 +1,6 @@
-import type Pardal from "../..";
-import type { PardalContext } from "../..";
-import type { LayoutElement, MeasuredWord, WrappedTextLine } from "../model/element";
+import type { PardalContext } from "~/domain/model/types";
+import type Pardal from "~/index";
+import type { LayoutElement, MeasuredWord, WrappedTextLine } from "~/domain/model/element";
 // Importações
 import {
   type BoundingBox,
@@ -13,7 +13,7 @@ import {
   SizingType,
   TextAlignment,
   type Vector2,
-} from "../model/types";
+} from "~/domain/model/types";
 import {
   createCircleCommand,
   createImageCommandFromConfig,
@@ -293,10 +293,9 @@ export function wrapTextIntoLines(
 }
 
 /**
- * Calcular o layout final
- * Implementação baseada na estrutura do Clay
+ * Calcular o layout final através de várias fases
  */
-export function calculateFinalLayout(pardal: Pardal): void {
+export function multiPassLayoutEngine(pardal: Pardal): void {
   const currentContext = pardal.getContext();
 
   if (currentContext.debugMode) {

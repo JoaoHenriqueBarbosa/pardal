@@ -1,5 +1,10 @@
 // Tipos básicos do domínio do Pardal
 
+import type { Logger } from "../utils/logger";
+import type { RenderCommand } from "../rendering/commands";
+import type { LayoutElement } from "./element";
+import type { PDFKitFactory } from "./pdfkit";
+
 // Representação de um ponto 2D
 export interface Vector2 {
   x: number;
@@ -187,4 +192,29 @@ export enum ImageFitMode {
   FILL = "FILL", // Preenche todo o espaço, podendo distorcer
   CONTAIN = "CONTAIN", // Mantém proporções, cabe inteira no espaço
   COVER = "COVER", // Mantém proporções, cobre todo o espaço (pode cortar)
+}
+
+export interface Page {
+  sizes: Dimensions;
+  id: number;
+}
+
+// Contexto do Pardal
+export interface PardalContext {
+  layoutDimensions: Dimensions;
+  layoutElements: LayoutElement[];
+  renderCommands: RenderCommand[];
+  processedElements: Set<string>;
+  openLayoutElementStack: LayoutElement[];
+  currentParentId: number;
+  generation: number;
+  idMap: Map<string, LayoutElement>;
+  debugMode: boolean;
+  fonts?: FontOptions;
+  pdfKitFactory: PDFKitFactory;
+  logger: Logger;
+  pages: Page[];
+  currentPageId: number;
+  useImageForEmojis: boolean;
+  lineSpacingFactor: number;
 }

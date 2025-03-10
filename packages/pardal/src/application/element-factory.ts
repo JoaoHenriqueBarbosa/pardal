@@ -1,6 +1,6 @@
-import type Pardal from "..";
-import { Sizing } from "../domain/layout/sizing";
-import type { ElementDeclaration, LayoutElement } from "../domain/model/element";
+import type Pardal from "~/index";
+import { Sizing } from "~/domain/layout/sizing";
+import type { ElementDeclaration, LayoutElement } from "~/domain/model/element";
 import {
   Direction,
   type ElementType,

@@ -21,6 +21,12 @@
     "composite": true,
     "declarationMap": true,
 
+    /* Path aliases */
+    "baseUrl": "src",
+    "paths": {
+      "~/*": ["*"]
+    },
+
     /* Linting */
     "strict": true,
     "noUnusedLocals": true,

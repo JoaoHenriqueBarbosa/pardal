@@ -1,4 +1,4 @@
-import { Buffer } from "../../../polyfills/buffer";
+import { Buffer } from "~/polyfills";
 import { ptToPx } from "./size";
 
 export interface EmojiPosition {

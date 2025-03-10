@@ -1,15 +1,14 @@
-import type { PardalContext } from "..";
-import type Pardal from "../..";
-import { Buffer } from "../../polyfills/buffer";
-import { getFontForWord } from "../domain/layout/engine";
-import type { MeasuredWord } from "../domain/model/element";
-import type { PDFDocument } from "../domain/model/pdfkit";
-import { DEFAULT_FONTS } from "../domain/model/types";
-import type { CornerRadius } from "../domain/model/types";
-import { RenderCommandType } from "../domain/rendering/commands";
-import type { RenderCommand } from "../domain/rendering/commands";
-import { colorToHex } from "../domain/utils/color";
-import { isEmoji, isKeyCap, renderEmoji } from "../domain/utils/emoji";
+import type Pardal from "~/index";
+import { Buffer } from "~/polyfills/buffer";
+import { getFontForWord } from "~/domain/layout/engine";
+import type { MeasuredWord } from "~/domain/model/element";
+import type { PDFDocument } from "~/domain/model/pdfkit";
+import { DEFAULT_FONTS } from "~/domain/model/types";
+import type { CornerRadius, PardalContext } from "~/domain/model/types";
+import { RenderCommandType } from "~/domain/rendering/commands";
+import type { RenderCommand } from "~/domain/rendering/commands";
+import { colorToHex } from "~/domain/utils/color";
+import { isEmoji, isKeyCap, renderEmoji } from "~/domain/utils/emoji";
 
 /**
  * Renderiza a árvore de comandos para um documento PDF
