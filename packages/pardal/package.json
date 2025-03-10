@@ -1,11 +1,13 @@
 {
   "name": "pardal",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "PDF Automatic Rendering Dynamic Access Library",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "dev": "bun run --watch src/main.ts",
     "build": "tsc && bun build src/index.ts --outdir dist --target browser --external pdfkit --external sharp",
@@ -18,7 +20,12 @@
   "peerDependencies": {
     "pdfkit": ">=0.13.0"
   },
-  "keywords": ["pdf", "layout", "pardal", "pdfkit"],
+  "keywords": [
+    "pdf",
+    "layout",
+    "pardal",
+    "pdfkit"
+  ],
   "author": "",
   "license": "MIT"
 }

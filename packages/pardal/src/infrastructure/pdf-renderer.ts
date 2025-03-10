@@ -3,12 +3,12 @@ import { Buffer } from "~/polyfills/buffer";
 import { getFontForWord } from "~/domain/layout/engine";
 import type { MeasuredWord } from "~/domain/model/element";
 import type { PDFDocument } from "~/domain/model/pdfkit";
-import { DEFAULT_FONTS, ImageFitMode } from "~/domain/model/types";
+import { DEFAULT_FONTS } from "~/domain/model/types";
 import type { CornerRadius, PardalContext } from "~/domain/model/types";
 import { RenderCommandType } from "~/domain/rendering/commands";
 import type { RenderCommand } from "~/domain/rendering/commands";
 import { isEmoji, isKeyCap, renderEmoji } from "~/domain/utils/emoji";
-import { ptToPx, pxToPt } from "~/domain/utils/size";
+import { ptToPx } from "~/domain/utils/size";
 
 function getChildrenElementsRenderCommands(pardal: Pardal, parentId: string): RenderCommand[] {
   const currentContext = pardal.getContext();
