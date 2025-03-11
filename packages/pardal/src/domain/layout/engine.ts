@@ -167,8 +167,11 @@ export function wrapTextIntoLines(
     let currentLine: WrappedTextLine | null = null;
     let currentLineWidth = 0;
 
-    // Helper function to check if a word is a space
-    const isSpace = (word: MeasuredWord) => word.text.trim() === '';
+    // Enhanced helper function to check if a word is a space - check for any whitespace
+    const isSpace = (word: MeasuredWord) => {
+      if (!word?.text) return false;
+      return word.text.trim().length === 0;
+    };
 
     for (let i = 0; i < words.length; i++) {
       const word = words[i];
@@ -261,12 +264,9 @@ export function wrapTextIntoLines(
         const isFirstWordInLine = currentLine.content.length === 0;
         
         // Se a palavra é um espaço e é a primeira palavra da linha,
-        // adicionamos para renderização mas não para medição
+        // não adicionamos para evitar espaços no início das linhas
         if (isSpaceWord && isFirstWordInLine) {
-          currentLine.content.push(word);
-          // Não contabilizamos na largura da linha
-          // Ainda contabilizamos no comprimento do texto para rastreamento correto
-          currentLine.length += word.length;
+          // Skip leading spaces completely
         }
         // Se a palavra cabe na linha atual, adiciona a palavra à linha
         else if (currentLineWidth + word.width <= containerWidth) {
@@ -274,69 +274,108 @@ export function wrapTextIntoLines(
           currentLine.content.push(word);
           
           // Adicionar à largura da linha (para verificação de container)
-          // Se for espaço no final da linha, será tratado na próxima iteração
           currentLineWidth += word.width;
           
           // Update the length of the line
           currentLine.length += word.length;
           
           // Atualizar a largura para renderização
-          // Se for espaço, pode ser que não contabilize no final da renderização
-          if (!isSpaceWord) {
-            currentLine.dimensions.width += word.width;
-          } else {
-            // Se for espaço, adiciona temporariamente à largura de renderização
-            // Pode ser removido depois se for o último da linha
-            currentLine.dimensions.width += word.width;
-          }
-          
+          currentLine.dimensions.width += word.width;
           currentLine.dimensions.height = Math.max(currentLine.dimensions.height, word.height);
         } else {
-          // Verificar se o último item da linha atual é um espaço
-          if (currentLine.content.length > 0) {
-            const lastWordIndex = currentLine.content.length - 1;
-            const lastWord = currentLine.content[lastWordIndex];
+          // A palavra não cabe na linha atual
+          
+          // Se a linha atual termina com espaços, vamos tentar remover para ver se a palavra cabe
+          let spaceRemoved = false;
+          while (currentLine.content.length > 0) {
+            const lastIdx = currentLine.content.length - 1;
+            const lastWord = currentLine.content[lastIdx];
             
-            // Se o último item é um espaço, não o contabilizamos na largura final da linha
             if (isSpace(lastWord)) {
-              // Remover a largura do espaço da dimensão final da linha
+              // Remover o espaço
+              currentLine.content.pop();
+              currentLineWidth -= lastWord.width;
+              currentLine.length -= lastWord.length;
               currentLine.dimensions.width -= lastWord.width;
+              spaceRemoved = true;
+              
+              // Verificar se agora a palavra cabe
+              if (currentLineWidth + word.width <= containerWidth) {
+                // A palavra cabe após remover espaços
+                currentLine.content.push(word);
+                currentLineWidth += word.width;
+                currentLine.length += word.length;
+                currentLine.dimensions.width += word.width;
+                currentLine.dimensions.height = Math.max(currentLine.dimensions.height, word.height);
+                break;
+              }
+            } else {
+              // Se não é espaço, paramos de tentar remover
+              break;
             }
           }
           
-          // Adiciona a linha atual ao array de linhas
-          lines.push(currentLine);
+          // Se removemos espaços e a palavra agora cabe, continuamos para a próxima palavra
+          if (spaceRemoved && currentLine.content[currentLine.content.length - 1] === word) {
+            // Adiciona a linha ao array e inicia uma nova
+            lines.push(currentLine);
+            currentLine = null;
+            currentLineWidth = 0;
+          }
+          // Chegamos aqui se a palavra não coube mesmo após tentar remover espaços
+          // ou se não havia espaços para remover
+          else {
+            // Adiciona a linha atual ao array de linhas (se não estiver vazia)
+            if (currentLine.content.length > 0) {
+              lines.push(currentLine);
+            }
 
-          // Inicia uma nova linha com a palavra atual
-          currentLine = {
-            content: [word],
-            dimensions: { 
-              width: isSpaceWord ? 0 : word.width, 
-              height: word.height 
-            },
-            startOffset: word.startOffset,
-            length: word.length,
-          };
-          currentLineWidth = isSpaceWord ? 0 : word.width;
+            // Inicia uma nova linha com a palavra atual, ignorando se for espaço
+            if (isSpaceWord) {
+              currentLine = {
+                content: [],
+                dimensions: { width: 0, height: 0 },
+                startOffset: word.startOffset,
+                length: 0,
+              };
+              currentLineWidth = 0;
+            } else {
+              currentLine = {
+                content: [word],
+                dimensions: { 
+                  width: word.width, 
+                  height: word.height 
+                },
+                startOffset: word.startOffset,
+                length: word.length,
+              };
+              currentLineWidth = word.width;
+            }
+          }
         }
       }
     }
 
-    // Não esquecer de adicionar a última linha, se existir
+    // Não esquecer de adicionar a última linha, se existir e não estiver vazia
     if (currentLine !== null && currentLine.content.length > 0) {
-      // Verificar se o último item da última linha é um espaço
-      if (currentLine.content.length > 0) {
-        const lastWordIndex = currentLine.content.length - 1;
-        const lastWord = currentLine.content[lastWordIndex];
+      // Remove trailing spaces from the last line
+      while (currentLine.content.length > 0) {
+        const lastIdx = currentLine.content.length - 1;
+        const lastWord = currentLine.content[lastIdx];
         
-        // Se o último item é um espaço, não o contabilizamos na largura final da linha
         if (isSpace(lastWord)) {
-          // Remover a largura do espaço da dimensão final da linha
+          currentLine.content.pop();
           currentLine.dimensions.width -= lastWord.width;
+          currentLine.length -= lastWord.length;
+        } else {
+          break;
         }
       }
       
-      lines.push(currentLine);
+      // Add the line only if it still has content after removing trailing spaces
+      if (currentLine.content.length > 0) {
+        lines.push(currentLine);
+      }
     }
 
     pdfDoc.end();

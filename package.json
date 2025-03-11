@@ -1,6 +1,6 @@
 {
   "name": "pardal-monorepo",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Monorepo para Pardal (PDF Automatic Rendering Dynamic Access Library)",
   "private": true,
   "workspaces": ["packages/*"],
