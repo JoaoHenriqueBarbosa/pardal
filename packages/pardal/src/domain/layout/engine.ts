@@ -287,6 +287,7 @@ export function wrapTextIntoLines(
           
           // Se a linha atual termina com espaços, vamos tentar remover para ver se a palavra cabe
           let spaceRemoved = false;
+          const removedSpaces = []; // Armazenar espaços removidos
           while (currentLine.content.length > 0) {
             const lastIdx = currentLine.content.length - 1;
             const lastWord = currentLine.content[lastIdx];
@@ -297,11 +298,21 @@ export function wrapTextIntoLines(
               currentLineWidth -= lastWord.width;
               currentLine.length -= lastWord.length;
               currentLine.dimensions.width -= lastWord.width;
+              removedSpaces.unshift(lastWord); // Guardar o espaço removido
               spaceRemoved = true;
               
               // Verificar se agora a palavra cabe
               if (currentLineWidth + word.width <= containerWidth) {
-                // A palavra cabe após remover espaços
+                // Palavra cabe após remover espaços
+                // Colocar de volta os espaços removidos
+                for (const space of removedSpaces) {
+                  currentLine.content.push(space);
+                  currentLineWidth += space.width;
+                  currentLine.length += space.length;
+                  currentLine.dimensions.width += space.width;
+                }
+                
+                // Adicionar a palavra depois dos espaços
                 currentLine.content.push(word);
                 currentLineWidth += word.width;
                 currentLine.length += word.length;
@@ -326,7 +337,7 @@ export function wrapTextIntoLines(
           // ou se não havia espaços para remover
           else {
             // Adiciona a linha atual ao array de linhas (se não estiver vazia)
-            if (currentLine.content.length > 0) {
+            if (currentLine && currentLine.content.length > 0) {
               lines.push(currentLine);
             }
 
