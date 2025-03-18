@@ -9,8 +9,8 @@ export class PardalBuffer {
   /**
    * Creates a new Buffer from an ArrayBuffer, string, or array
    */
-  constructor(input: ArrayBuffer | string | number[] | Uint8Array) {
-    if (input instanceof ArrayBuffer) {
+  constructor(input: ArrayBuffer | SharedArrayBuffer | string | number[] | Uint8Array) {
+    if (input instanceof ArrayBuffer || (typeof SharedArrayBuffer !== 'undefined' && input instanceof SharedArrayBuffer)) {
       this.bytes = new Uint8Array(input);
     } else if (typeof input === "string") {
       // For string input, create a UTF-8 encoded buffer
@@ -54,9 +54,9 @@ export class PardalBuffer {
   /**
    * Creates a Buffer from an ArrayBuffer
    */
-  static from(input: ArrayBuffer | string | number[] | Uint8Array): ArrayBuffer {
-    // Return the ArrayBuffer directly when we're in a context that expects an ArrayBuffer
-    if (input instanceof ArrayBuffer) {
+  static from(input: ArrayBuffer | string | number[] | Uint8Array | ArrayBufferLike): ArrayBufferLike {
+    // For ArrayBufferLike (including SharedArrayBuffer), create a copy to ensure we have a standard ArrayBuffer
+    if (input instanceof ArrayBuffer || (typeof SharedArrayBuffer !== 'undefined' && input instanceof SharedArrayBuffer)) {
       return input;
     }
 
@@ -67,7 +67,7 @@ export class PardalBuffer {
   /**
    * Get the underlying ArrayBuffer
    */
-  get buffer(): ArrayBuffer {
+  get buffer(): ArrayBufferLike {
     return this.bytes.buffer;
   }
 

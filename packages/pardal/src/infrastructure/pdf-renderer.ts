@@ -1,7 +1,6 @@
 import type Pardal from "~/index";
 import { Buffer } from "~/polyfills/buffer";
 import { getFontForWord } from "~/domain/layout/engine";
-import type { MeasuredWord } from "~/domain/model/element";
 import type { PDFDocument } from "~/domain/model/pdfkit";
 import { DEFAULT_FONTS } from "~/domain/model/types";
 import type { CornerRadius, PardalContext } from "~/domain/model/types";
@@ -327,9 +326,8 @@ export async function renderToPDF(pardal: Pardal): Promise<ArrayBuffer> {
         offset += chunk.length;
       }
 
-      const pdfBytes = result.buffer;
-
-      resolve(Buffer.from(pdfBytes));
+      // Using a direct cast to bypass the type system since the Buffer.from implementation can handle it
+      resolve(result.buffer);
     });
 
     doc.on("error", reject);
@@ -805,93 +803,62 @@ async function drawText(
       doc.fillOpacity(1);
     }
   } else {
-    // Posição inicial para renderização
-    let currentY = y;
+    // Renderizar diretamente os segmentos em sua posição y original
+    let xPos = x;
+    const lineY = y + correction;
 
-    // Primeiro vamos medir e agrupar segmentos em linhas
-    const lines: { segments: (MeasuredWord & { font: string })[]; y: number }[] = [
-      { segments: [], y: currentY + correction },
-    ];
-    let lineIndex = 0;
-    let lineWidth = 0;
+    // Renderizar todos os segmentos em sequência (já temos as linhas quebradas do layout engine)
+    for (let i = 0; i < content.length; i++) {
+      const segment = content[i];
+      const isLastSegment = i === content.length - 1;
+      const isFirstSegment = i === 0;
 
-    // Medir e organizar segmentos em linhas
-    for (const segment of content) {
-      // Determinar a fonte baseada no estilo
       const fontFamily = getFontForWord(segment, context.fonts || DEFAULT_FONTS) || "Helvetica";
+      const segmentFont = isEmoji(segment.text) ? context.fonts?.emoji : fontFamily;
 
-      // Medir o texto com a fonte correta
-      doc.font(fontFamily).fontSize(fontSize || 16);
-      const segmentWidth = segment.width;
+      // Verificar se é um emoji
+      const { rendered } = await handleEmojiRendering(
+        context,
+        doc,
+        segment.text,
+        xPos,
+        lineY,
+        fontSize,
+        segmentFont || "Helvetica"
+      );
 
-      // Verificar se o segmento cabe na linha atual
-      if (lineWidth + segmentWidth > width && lineWidth > 0) {
-        // Criar nova linha
-        currentY += doc.currentLineHeight();
-        lines.push({ segments: [], y: currentY + correction });
-        lineIndex++;
-        lineWidth = 0;
+      // Configurar aparência do texto
+      configureTextAppearance(doc, segmentFont || "Helvetica", fontSize, hexColor, rendered ? 0 : 1);
+
+      if (context.debugMode) {
+        context.logger.debug(`segment.text ${segment.text}`);
+        context.logger.debug(`xPos ${xPos}`);
+        context.logger.debug(`lineY ${lineY}`);
       }
 
-      // Adicionar segmento à linha atual
-      lines[lineIndex].segments.push({
-        ...segment,
-        font: fontFamily,
-      });
+      // // Skip rendering whitespace-only segments unless they're the first or last segment
+      // if (segment.text.trim() === '' && !isFirstSegment && !isLastSegment) {
+      //   xPos += segment.width;
+      //   continue;
+      // }
 
-      // Atualizar largura da linha
-      lineWidth += segmentWidth;
-    }
+      if (isFirstSegment) {
+        doc.text(segment.text, xPos, lineY, {
+          continued: !isLastSegment,
+        });
+      } else {
+        doc.text(segment.text, doc.x, lineY, {
+          continued: !isLastSegment,
+        });
+      }
 
-    // Agora renderizar linha por linha, segmento por segmento
-    for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-      const line = lines[lineIndex];
-      let xPos = x;
+      if (rendered) {
+        doc.fillOpacity(1);
+      }
 
-      for (let segIndex = 0; segIndex < line.segments.length; segIndex++) {
-        const segment = line.segments[segIndex];
-        const isLastSegmentInLastLine =
-          lineIndex === lines.length - 1 && segIndex === line.segments.length - 1;
-        const isFirstSegmentInFirstLine = lineIndex === 0 && segIndex === 0;
-
-        const segmentFont = isEmoji(segment.text) ? context.fonts?.emoji : segment.font;
-
-        if (!segmentFont) {
-          throw new Error(`Fonte não encontrada para o segmento: ${segment.text}`);
-        }
-
-        // Verificar se é um emoji
-        const { rendered } = await handleEmojiRendering(
-          context,
-          doc,
-          segment.text,
-          xPos,
-          line.y,
-          fontSize,
-          segmentFont
-        );
-
-        // Configurar aparência do texto
-        configureTextAppearance(doc, segmentFont, fontSize, hexColor, rendered ? 0 : 1);
-
-        if (isFirstSegmentInFirstLine) {
-          doc.text(segment.text, xPos, line.y, {
-            continued: true,
-          });
-        } else {
-          doc.text(segment.text, doc.x, line.y, {
-            continued: !isLastSegmentInLastLine,
-          });
-        }
-
-        if (rendered) {
-          doc.fillOpacity(1);
-        }
-
-        // Avançar a posição manual e explicitamente apenas se não for o último segmento
-        if (!isLastSegmentInLastLine) {
-          xPos += segment.width;
-        }
+      // Avançar a posição manual e explicitamente apenas se não for o último segmento
+      if (!isLastSegment) {
+        xPos += segment.width;
       }
     }
   }
