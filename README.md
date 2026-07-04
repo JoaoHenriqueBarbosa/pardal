@@ -7,13 +7,14 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Runtime: Bun](https://img.shields.io/badge/runtime-Bun-000000.svg?logo=bun&logoColor=white)](https://bun.sh)
 [![Biome](https://img.shields.io/badge/formatted%20with-Biome-60A5FA.svg?logo=biome&logoColor=white)](https://biomejs.dev)
+[![Tests](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/JoaoHenriqueBarbosa/pardal/main/.github/badges/tests.json)](#development)
 [![Lines of code](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/JoaoHenriqueBarbosa/pardal/main/.github/badges/loc.json)](#architecture)
 
 Pardal lets you describe a document as a tree of nested boxes — rectangles, circles, text, and images — using a sizing model that will feel familiar to anyone who has used flexbox. You declare *intent* (grow to fill, fit to content, take 50%, be exactly 120pt) and Pardal computes the absolute geometry through a multi-pass layout algorithm, emits a list of render commands, and paints them into a PDF via [PDFKit](https://pdfkit.org/). The output is a plain `ArrayBuffer` you can stream, save, or download.
 
 The layout core is modeled closely on Nic Barker's [**Clay**](https://github.com/nicbarker/clay) immediate-mode UI layout library — the sizing kinds, the row/column direction, the child-alignment grid, and the top-down/bottom-up pass structure all mirror Clay's approach, applied to paged PDF output instead of a screen.
 
-> **Project status — exploratory spike.** Pardal is an early-stage (`0.1.x`) library. The layout engine and renderer are substantial and coherent, and the package is published on npm, but the edges are unpolished: there is **no automated test suite yet**, the bundled demo apps are stale against the current API (see [Examples](#examples)), and several config knobs are threaded through the types but not yet honored by the renderer. Treat it as a working proof-of-concept for a Clay-style PDF layout engine, not a production dependency. It is documented honestly below so you know exactly what you are getting.
+> **Project status — early but working.** Pardal is an early-stage (`0.1.x`) library, and the package is published on npm. The layout engine and renderer are substantial and coherent: the [`examples/`](#examples) render real, good-looking PDFs, and a test suite covers the sizing model, text measurement/wrapping, document generation, and layout regressions. Rough edges remain — the bundled *demo apps* are stale against the current API (the `examples/` are the up-to-date reference), and a few config knobs are threaded through the types but not yet honored by the renderer. Treat it as a working proof-of-concept for a Clay-style PDF layout engine rather than a battle-tested production dependency. It is documented honestly below so you know exactly what you are getting.
 
 ## Highlights
 
@@ -191,9 +192,31 @@ bun run fix
 
 ## Examples
 
-Two demo apps live in the repo — a browser demo (`packages/web-demo`, Vite) and a server demo (`packages/server-demo`, Bun on port `3001`).
+Runnable, self-contained examples live in [`examples/`](examples). Each one is a
+single script that builds a document with the class API and writes a PDF to
+`examples/output/`. None of them need network access or custom fonts.
 
-> **Heads up:** both demos are currently **stale against the library's public API.** They import a procedural interface (`createPDFDocument`, `beginLayout`, `endLayout`, `image`, `column`, `row`, `text`, …) from an earlier architecture; the current package exports the class-based `Pardal` API shown above instead. The demos will not build as-is. Use the [Usage](#usage) example — written against the current class API — as your reference, and treat the demos as a work-in-progress to be ported.
+```bash
+bun run examples/01-hello-card.ts    # -> examples/output/01-hello-card.pdf
+bun run examples/02-invoice.ts
+bun run examples/03-typography.ts
+bun run examples/04-shapes.ts
+```
+
+| Card | Invoice |
+| --- | --- |
+| ![hello card](examples/output/01-hello-card.png) | ![invoice](examples/output/02-invoice.png) |
+| **Typography** — Markdown, wrapping, alignment | **Shapes** — rects, rounded rects, circles |
+| ![typography](examples/output/03-typography.png) | ![shapes](examples/output/04-shapes.png) |
+
+The PNGs above are rasterized straight from the generated PDFs (`pdftoppm`).
+
+> **Note on the bundled demo apps:** the repo also carries two older demo apps
+> (`packages/web-demo`, Vite; `packages/server-demo`, Bun on `:3001`). These
+> still import a **procedural interface from an earlier architecture**
+> (`createPDFDocument`, `beginLayout`, `endLayout`, …) and **will not build
+> as-is** against the current class-based API. Prefer the `examples/` above;
+> porting the demo apps is a good contribution.
 
 ## Architecture
 

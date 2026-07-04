@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Generated example output (PNGs are committed for the README, PDFs are not)
+examples/output/*.pdf
+
+# TypeScript incremental build info
+*.tsbuildinfo
