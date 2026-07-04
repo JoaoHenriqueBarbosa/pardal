@@ -1,0 +1,39 @@
+name: Badges
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  badges:
+    name: Refresh metric badges
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Compute metrics
+        id: m
+        run: |
+          TESTS=$(grep -rEn '\b(test|it)\(' packages/*/src --include='*.test.ts' --include='*.spec.ts' 2>/dev/null | wc -l)
+          LOC=$(find . -path '*/node_modules' -prune -o \( -name '*.ts' -o -name '*.tsx' \) -print | xargs wc -l | tail -1 | awk '{print $1}')
+          echo "tests=$TESTS" >> "$GITHUB_OUTPUT"
+          echo "loc=$LOC" >> "$GITHUB_OUTPUT"
+      - name: Write badge endpoints
+        run: |
+          mkdir -p .github/badges
+          COLOR=$([ "${{ steps.m.outputs.tests }}" -ge 10 ] && echo brightgreen || echo yellow)
+          printf '{"schemaVersion":1,"label":"tests","message":"%s","color":"%s"}\n' "${{ steps.m.outputs.tests }}" "$COLOR" > .github/badges/tests.json
+          printf '{"schemaVersion":1,"label":"lines of TypeScript","message":"%s","color":"blue"}\n' "${{ steps.m.outputs.loc }}" > .github/badges/loc.json
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if ! git diff --quiet .github/badges; then
+            git add .github/badges
+            git commit -m "ci(badges): refresh metrics [skip ci]"
+            git push
+          else
+            echo "badges unchanged"
+          fi

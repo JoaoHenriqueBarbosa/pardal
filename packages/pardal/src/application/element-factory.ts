@@ -25,8 +25,11 @@ export function createElement(
 ): void {
   const currentContext = pardal.getContext();
 
-  // Processar cor de fundo e padding
-  const backgroundColor = config.fillColor || config.backgroundColor || "#FFFFFF";
+  // Processar cor de fundo e padding.
+  // Um elemento sem cor explícita é transparente (não pinta um retângulo),
+  // em vez de branco — do contrário todo container/texto sem `backgroundColor`
+  // desenharia um retângulo branco por baixo.
+  const backgroundColor = config.backgroundColor || "transparent";
   const padding = parsePadding(config.padding);
 
   // Processamento especial para texto
