@@ -626,6 +626,11 @@ function drawRectangle(
     context.logger.debug(`Cor: ${backgroundColor}`);
   }
 
+  // Um fundo transparente não pinta nada — apenas ocupa espaço no layout.
+  if (!backgroundColor || backgroundColor === "transparent") {
+    return;
+  }
+
   // Usar a cor diretamente
   const hexColor = backgroundColor;
 
