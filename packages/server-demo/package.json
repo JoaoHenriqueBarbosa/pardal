@@ -10,8 +10,8 @@
   },
   "dependencies": {
     "pardal": "workspace:*",
-    "pdfkit": "0.16.0",
-    "sharp": "^0.33.5"
+    "pdfkit": "0.19.1",
+    "sharp": "^0.35.3"
   },
   "devDependencies": {
     "bun-types": "latest",
