@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "pardal": "workspace:*",
-    "pdfkit": "^0.16.0",
+    "pdfkit": "^0.19.1",
     "vite-plugin-fs": "^1.1.0"
   },
   "devDependencies": {
